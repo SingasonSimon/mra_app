@@ -33,6 +33,10 @@ migrate_working_dir/
 /build/
 /coverage/
 
+# App assets (generated or large)
+assets/images/
+assets/fonts/
+
 # Symbolication related
 app.*.symbols
 

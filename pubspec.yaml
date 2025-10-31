@@ -75,6 +75,24 @@ flutter:
   # the material Icons class.
   uses-material-design: true
 
+  # assets:
+  #   - assets/images/  # Uncomment when adding images
+
+  # Fonts will be added later when assets are available
+
+flutter_native_splash:
+  color: "#FAFAFA"
+  color_dark: "#1B5E20"
+  image: assets/images/splash.png
+  branding: assets/images/branding.png
+  android: true
+  android_gravity: center
+
+flutter_launcher_icons:
+  android: true
+  image_path: assets/images/icon.png
+  min_sdk_android: 23
+
   # To add assets to your application, add an assets section, like this:
   # assets:
   #   - images/a_dot_burr.jpeg

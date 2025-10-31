@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "746414767673",
+    "project_id": "mra-app-ca665",
+    "storage_bucket": "mra-app-ca665.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:746414767673:android:d21282c42444011536d7e8",
+        "android_client_info": {
+          "package_name": "com.mra.mra_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCwVsWdd70zvOdMlHT5Ajs-fod_u4wtGBo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
