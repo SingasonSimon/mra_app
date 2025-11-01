@@ -10,6 +10,7 @@ import '../../../app/theme/app_theme.dart';
 import '../../medication/providers/medication_providers.dart';
 import '../../../utils/navigation_helper.dart';
 import '../../../core/models/medication.dart';
+import '../../../widgets/page_enter_transition.dart';
 
 class HistoryScreen extends ConsumerStatefulWidget {
   const HistoryScreen({super.key});
@@ -37,7 +38,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
             currentNow.day,
           );
           final startOfWindow = todayMidnight.subtract(const Duration(days: 6));
-
+          
           // Get active medications
           final activeMeds = medications.where((med) {
             if (med.startDate.isAfter(todayMidnight)) return false;
@@ -46,7 +47,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
             }
             return true;
           }).toList();
-
+          
           // Calculate expected doses for the week (including today)
           int expectedDoses = 0;
           for (final med in activeMeds) {
@@ -57,11 +58,11 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
 
               if (med.startDate.isBefore(dayEnd) &&
                   (med.endDate == null || !med.endDate!.isBefore(dayStart))) {
-                expectedDoses += med.timesPerDay.length;
-              }
+                  expectedDoses += med.timesPerDay.length;
+                }
             }
           }
-
+          
           // Count taken doses - match with scheduled times
           int takenDoses = 0;
           for (final med in activeMeds) {
@@ -69,7 +70,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
               final date = startOfWindow.add(Duration(days: day));
               final dayStart = DateTime(date.year, date.month, date.day);
               final dayEnd = dayStart.add(const Duration(days: 1));
-
+              
               if (med.startDate.isBefore(dayEnd) &&
                   (med.endDate == null || !med.endDate!.isBefore(dayStart))) {
                 for (final scheduledTime in med.timesPerDay) {
@@ -80,22 +81,22 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
                     scheduledTime.hour,
                     scheduledTime.minute,
                   );
-
+                  
                   final hasLog = logs.any(
                     (log) =>
-                        log.medicationId == med.id &&
-                        log.status == MedEventStatus.taken &&
-                        log.timestamp.isAfter(dayStart) &&
-                        log.timestamp.isBefore(dayEnd) &&
-                        log.scheduledDoseTime.year == scheduledDateTime.year &&
+                      log.medicationId == med.id &&
+                      log.status == MedEventStatus.taken &&
+                      log.timestamp.isAfter(dayStart) &&
+                      log.timestamp.isBefore(dayEnd) &&
+                      log.scheduledDoseTime.year == scheduledDateTime.year &&
                         log.scheduledDoseTime.month ==
                             scheduledDateTime.month &&
-                        log.scheduledDoseTime.day == scheduledDateTime.day &&
-                        log.scheduledDoseTime.hour == scheduledDateTime.hour &&
+                      log.scheduledDoseTime.day == scheduledDateTime.day &&
+                      log.scheduledDoseTime.hour == scheduledDateTime.hour &&
                         log.scheduledDoseTime.minute ==
                             scheduledDateTime.minute,
                   );
-
+                  
                   if (hasLog) {
                     takenDoses++;
                   }
@@ -103,11 +104,11 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
               }
             }
           }
-
+          
           final percentage = expectedDoses > 0
               ? (takenDoses / expectedDoses * 100).round()
               : 0;
-
+          
           // Calculate last week for comparison (previous 7-day window)
           final previousWindowStart = startOfWindow.subtract(
             const Duration(days: 7),
@@ -131,7 +132,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
               final date = previousWindowStart.add(Duration(days: day));
               final dayStart = DateTime(date.year, date.month, date.day);
               final dayEnd = dayStart.add(const Duration(days: 1));
-
+              
               if (med.startDate.isBefore(dayEnd) &&
                   (med.endDate == null || !med.endDate!.isBefore(dayStart))) {
                 for (final scheduledTime in med.timesPerDay) {
@@ -142,22 +143,22 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
                     scheduledTime.hour,
                     scheduledTime.minute,
                   );
-
+                  
                   final hasLog = logs.any(
                     (log) =>
-                        log.medicationId == med.id &&
-                        log.status == MedEventStatus.taken &&
-                        log.timestamp.isAfter(dayStart) &&
-                        log.timestamp.isBefore(dayEnd) &&
-                        log.scheduledDoseTime.year == scheduledDateTime.year &&
+                      log.medicationId == med.id &&
+                      log.status == MedEventStatus.taken &&
+                      log.timestamp.isAfter(dayStart) &&
+                      log.timestamp.isBefore(dayEnd) &&
+                      log.scheduledDoseTime.year == scheduledDateTime.year &&
                         log.scheduledDoseTime.month ==
                             scheduledDateTime.month &&
-                        log.scheduledDoseTime.day == scheduledDateTime.day &&
-                        log.scheduledDoseTime.hour == scheduledDateTime.hour &&
+                      log.scheduledDoseTime.day == scheduledDateTime.day &&
+                      log.scheduledDoseTime.hour == scheduledDateTime.hour &&
                         log.scheduledDoseTime.minute ==
                             scheduledDateTime.minute,
                   );
-
+                  
                   if (hasLog) {
                     lastWeekTaken++;
                   }
@@ -168,7 +169,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
           final lastWeekPercentage = lastWeekExpected > 0
               ? (lastWeekTaken / lastWeekExpected * 100).round()
               : 0;
-
+          
           return {
             'percentage': percentage,
             'lastWeek': lastWeekPercentage,
@@ -209,21 +210,21 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
           currentNow.month,
           currentNow.day,
         );
-
+        
         for (int i = 0; i < 365; i++) {
           final date = today.subtract(Duration(days: i));
           final dayStart = DateTime(date.year, date.month, date.day);
           final dayEnd = dayStart.add(const Duration(days: 1));
-
+          
           final dayLogs = logs
               .where(
                 (log) =>
-                    log.timestamp.isAfter(dayStart) &&
-                    log.timestamp.isBefore(dayEnd) &&
+            log.timestamp.isAfter(dayStart) &&
+            log.timestamp.isBefore(dayEnd) &&
                     log.status == MedEventStatus.taken,
               )
               .toList();
-
+          
           if (dayLogs.isEmpty) {
             break;
           } else {
@@ -244,7 +245,8 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
 
     return Scaffold(
       backgroundColor: theme.colorScheme.background,
-      body: SafeArea(
+      body: PageEnterTransition(
+        child: SafeArea(
         bottom: false,
         child: Column(
           children: [
@@ -263,7 +265,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
               ),
               child: Row(
                 children: [
-                  IconButton(
+          IconButton(
                     icon: const Icon(AppIcons.arrowLeft, color: AppTheme.white),
                     onPressed: () => context.safePop(),
                     padding: EdgeInsets.zero,
@@ -284,7 +286,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
                 ],
               ),
             ),
-
+            
             // Summary Cards
             Padding(
               padding: const EdgeInsets.all(20),
@@ -323,71 +325,71 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
             Expanded(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
                     // Adherence Rate Section
-                    Container(
-                      padding: const EdgeInsets.all(20),
-                      decoration: BoxDecoration(
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
                         color: isDark
                             ? const Color(0xFF1F2937)
                             : AppTheme.white,
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                          color: isDark ? AppTheme.gray700 : AppTheme.gray200,
-                          width: 1,
-                        ),
-                        boxShadow: isDark
-                            ? []
-                            : [
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.05),
-                                  blurRadius: 10,
-                                  offset: const Offset(0, 2),
-                                ),
-                              ],
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: isDark ? AppTheme.gray700 : AppTheme.gray200,
+                width: 1,
+              ),
+              boxShadow: isDark
+                  ? []
+                  : [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.05),
+                        blurRadius: 10,
+                        offset: const Offset(0, 2),
                       ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Adherence Rate',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: isDark ? AppTheme.white : AppTheme.gray900,
-                            ),
-                          ),
+                    ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Adherence Rate',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: isDark ? AppTheme.white : AppTheme.gray900,
+                      ),
+                    ),
                           const SizedBox(height: 16),
                           Row(
-                            children: [
+                      children: [
                               Expanded(
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Text(
+                        Text(
                                       '${adherenceData['percentage']}%',
-                                      style: TextStyle(
+                                style: TextStyle(
                                         fontSize: 36,
                                         fontWeight: FontWeight.bold,
                                         color: AppTheme.teal500,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Text(
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                        Text(
                                       '${adherenceData['taken']}/${adherenceData['expected']} doses',
-                                      style: TextStyle(
+                                style: TextStyle(
                                         fontSize: 14,
-                                        color: isDark
+                                  color: isDark 
                                             ? AppTheme.white.withValues(
                                                 alpha: 0.6,
                                               )
-                                            : AppTheme.gray600,
+                                      : AppTheme.gray600,
                                       ),
-                                    ),
-                                  ],
                                 ),
+                                  ],
+                              ),
                               ),
                               Container(
                                 width: 80,
@@ -398,14 +400,14 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
                                     alpha: 0.1,
                                   ),
                                 ),
-                                child: Center(
+                        child: Center(
                                   child: Text(
                                     '${adherenceData['percentage']}%',
                                     style: TextStyle(
                                       fontSize: 20,
                                       fontWeight: FontWeight.bold,
-                                      color: AppTheme.teal500,
-                                    ),
+                                color: AppTheme.teal500,
+                              ),
                                   ),
                                 ),
                               ),
@@ -414,18 +416,18 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
                         ],
                       ),
                     ),
-
+                    
                     const SizedBox(height: 20),
-
+                    
                     // Calendar View
-                    Text(
+                              Text(
                       'Adherence Calendar',
-                      style: TextStyle(
+                                style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
-                        color: isDark ? AppTheme.white : AppTheme.gray900,
-                      ),
-                    ),
+                                  color: isDark ? AppTheme.white : AppTheme.gray900,
+                                ),
+                              ),
                     const SizedBox(height: 12),
                     _CalendarView(now: now),
                     const SizedBox(height: 12),
@@ -456,9 +458,9 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
                         ),
                       ],
                     ),
-
+                    
                     const SizedBox(height: 24),
-
+                    
                     // Recent Activity
                     Text(
                       'Recent Activity',
@@ -487,31 +489,31 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
                               ),
                             ),
                             child: Center(
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
                                     AppIcons.bell,
-                                    size: 48,
+                                size: 48,
                                     color: isDark
                                         ? AppTheme.gray400
                                         : AppTheme.gray400,
-                                  ),
-                                  const SizedBox(height: 12),
-                                  Text(
+                              ),
+                              const SizedBox(height: 12),
+                              Text(
                                     'No recent activity',
-                                    style: TextStyle(
+                                style: TextStyle(
                                       color: isDark
                                           ? AppTheme.white
                                           : AppTheme.gray900,
                                       fontSize: 16,
-                                    ),
+                                ),
                                   ),
                                   const SizedBox(height: 4),
                                   Text(
                                     'Log your medication doses to see activity here',
                                     style: TextStyle(
-                                      color: isDark
+                                      color: isDark 
                                           ? AppTheme.white.withValues(
                                               alpha: 0.6,
                                             )
@@ -519,52 +521,52 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
                                       fontSize: 13,
                                     ),
                                     textAlign: TextAlign.center,
-                                  ),
-                                ],
                               ),
-                            ),
-                          );
+                            ],
+                              ),
+                          ),
+                        );
                         }
                         final recent = logs.take(5).toList();
                         return Column(
                           children: recent
                               .map(
                                 (log) => _ActivityItem(
-                                  log: log,
-                                  isDark: isDark,
-                                  medications: medicationsAsync.when(
-                                    data: (meds) => meds,
-                                    loading: () => [],
-                                    error: (_, __) => [],
-                                  ),
+                            log: log,
+                            isDark: isDark,
+                            medications: medicationsAsync.when(
+                              data: (meds) => meds,
+                              loading: () => [],
+                              error: (_, __) => [],
+                            ),
                                 ),
                               )
                               .toList(),
                         );
                       },
-                      loading: () => Padding(
-                        padding: const EdgeInsets.all(32),
-                        child: Center(
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              CircularProgressIndicator(
-                                color: AppTheme.teal500,
-                              ),
-                              const SizedBox(height: 16),
-                              Text(
+                    loading: () => Padding(
+                      padding: const EdgeInsets.all(32),
+                      child: Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                                children: [
+                            CircularProgressIndicator(
+                              color: AppTheme.teal500,
+                            ),
+                            const SizedBox(height: 16),
+                                  Text(
                                 'Loading activity...',
-                                style: TextStyle(
+                              style: TextStyle(
                                   color: isDark
                                       ? AppTheme.white
                                       : AppTheme.gray900,
-                                ),
+                                  ),
+                                  ),
+                                ],
                               ),
-                            ],
-                          ),
-                        ),
                       ),
-                      error: (error, stack) {
+                    ),
+                    error: (error, stack) {
                         debugPrint('Error loading recent activity: $error');
                         return Container(
                           padding: const EdgeInsets.all(32),
@@ -581,107 +583,107 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
                             ),
                           ),
                           child: Center(
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  AppIcons.alertCircle,
-                                  size: 48,
-                                  color: AppTheme.red500,
-                                ),
-                                const SizedBox(height: 12),
-                                Text(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              AppIcons.alertCircle,
+                              size: 48,
+                              color: AppTheme.red500,
+                            ),
+                            const SizedBox(height: 12),
+                            Text(
                                   'Error loading activity',
-                                  style: TextStyle(
+                              style: TextStyle(
                                     color: isDark
                                         ? AppTheme.white
                                         : AppTheme.gray900,
                                     fontSize: 16,
-                                  ),
-                                ),
-                              ],
+                              ),
                             ),
-                          ),
-                        );
-                      },
-                    ),
-
+                          ],
+                            ),
+                        ),
+                      );
+                    },
+                  ),
+                    
                     const SizedBox(height: 24),
-
+                    
                     // Medication History List
-                    Text(
+          Text(
                       'Medication History',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: isDark ? AppTheme.white : AppTheme.gray900,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    logsAsync.when(
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: isDark ? AppTheme.white : AppTheme.gray900,
+            ),
+          ),
+          const SizedBox(height: 12),
+          logsAsync.when(
                       data: (logs) => medicationsAsync.when(
                         data: (medications) {
-                          if (logs.isEmpty) {
-                            return Container(
-                              padding: const EdgeInsets.all(32),
-                              decoration: BoxDecoration(
+              if (logs.isEmpty) {
+                return Container(
+                  padding: const EdgeInsets.all(32),
+                  decoration: BoxDecoration(
                                 color: isDark
                                     ? const Color(0xFF1F2937)
                                     : AppTheme.white,
-                                borderRadius: BorderRadius.circular(16),
-                                border: Border.all(
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
                                   color: isDark
                                       ? AppTheme.gray700
                                       : AppTheme.gray200,
-                                  width: 1,
-                                ),
-                              ),
-                              child: Center(
-                                child: Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(
+                      width: 1,
+                    ),
+                  ),
+                  child: Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
                                       AppIcons.pill,
-                                      size: 48,
+                          size: 48,
                                       color: isDark
                                           ? AppTheme.gray400
                                           : AppTheme.gray400,
-                                    ),
-                                    const SizedBox(height: 12),
-                                    Text(
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
                                       'No medication history',
-                                      style: TextStyle(
+                          style: TextStyle(
                                         color: isDark
                                             ? AppTheme.white
                                             : AppTheme.gray900,
-                                        fontSize: 16,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Text(
+                            fontSize: 16,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
                                       'Your medication logs will appear here',
-                                      style: TextStyle(
-                                        color: isDark
+                          style: TextStyle(
+                            color: isDark 
                                             ? AppTheme.white.withValues(
                                                 alpha: 0.6,
                                               )
-                                            : AppTheme.gray600,
-                                        fontSize: 13,
-                                      ),
-                                      textAlign: TextAlign.center,
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            );
-                          }
-
+                                : AppTheme.gray600,
+                            fontSize: 13,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }
+                          
                           // Create a map for quick medication lookup
                           final medicationMap = {
                             for (var med in medications) med.id: med,
                           };
-
-                          return Column(
+                          
+              return Column(
                             children: logs.map((log) {
                               final medication =
                                   medicationMap[log.medicationId];
@@ -691,24 +693,24 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
                                 isDark: isDark,
                               );
                             }).toList(),
-                          );
-                        },
-                        loading: () => Padding(
-                          padding: const EdgeInsets.all(32),
-                          child: Center(
+              );
+            },
+            loading: () => Padding(
+              padding: const EdgeInsets.all(32),
+              child: Center(
                             child: CircularProgressIndicator(
-                              color: AppTheme.teal500,
-                            ),
+                      color: AppTheme.teal500,
+                    ),
                           ),
                         ),
                         error: (error, stack) => Container(
                           padding: const EdgeInsets.all(16),
                           child: Text(
                             'Error loading medications',
-                            style: TextStyle(
-                              color: isDark ? AppTheme.white : AppTheme.gray900,
-                            ),
-                          ),
+                      style: TextStyle(
+                        color: isDark ? AppTheme.white : AppTheme.gray900,
+                      ),
+                    ),
                         ),
                       ),
                       loading: () => Padding(
@@ -729,13 +731,14 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
                         ),
                       ),
                     ),
-
+                    
                     const SizedBox(height: 20),
                   ],
                 ),
               ),
             ),
           ],
+          ),
         ),
       ),
       bottomNavigationBar: const BottomNavigation(currentIndex: 2),
@@ -760,23 +763,23 @@ class _SummaryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+              return Container(
       padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
+                decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [color, color.withValues(alpha: 0.8)],
         ),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Column(
+                  borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
+                    children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
+                      Text(
                 title,
                 style: const TextStyle(
                   color: Colors.white,
@@ -794,7 +797,7 @@ class _SummaryCard extends StatelessWidget {
               color: Colors.white,
               fontSize: 28,
               fontWeight: FontWeight.bold,
-            ),
+                      ),
           ),
           const SizedBox(height: 4),
           Text(
@@ -822,178 +825,178 @@ class _CalendarView extends ConsumerWidget {
     final medicationsAsync = ref.watch(medicationsStreamProvider);
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-
+    
     return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1F2937) : AppTheme.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: isDark ? AppTheme.gray700 : AppTheme.gray200,
-          width: 1,
-        ),
-      ),
-      child: logsAsync.when(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF1F2937) : AppTheme.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: isDark ? AppTheme.gray700 : AppTheme.gray200,
+                width: 1,
+              ),
+            ),
+            child: logsAsync.when(
         data: (logs) => medicationsAsync.when(
-          data: (medications) {
-            // Generate calendar grid for current month
-            final firstDay = DateTime(now.year, now.month, 1);
+                data: (medications) {
+                // Generate calendar grid for current month
+                final firstDay = DateTime(now.year, now.month, 1);
             final startDate = firstDay.subtract(
               Duration(days: firstDay.weekday % 7),
             );
-
-            return Column(
-              children: [
-                // Month header
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                
+                return Column(
                   children: [
-                    Text(
-                      DateFormat('MMMM yyyy').format(now),
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: isDark ? AppTheme.white : AppTheme.gray900,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                // Weekday headers
-                Row(
-                  children: ['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day) {
-                    return Expanded(
-                      child: Center(
-                        child: Text(
-                          day,
+                    // Month header
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          DateFormat('MMMM yyyy').format(now),
                           style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: isDark ? AppTheme.gray400 : AppTheme.gray600,
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: isDark ? AppTheme.white : AppTheme.gray900,
                           ),
                         ),
-                      ),
-                    );
-                  }).toList(),
-                ),
-                const SizedBox(height: 8),
-                // Calendar grid
-                ...List.generate(6, (weekIndex) {
-                  return Row(
-                    children: List.generate(7, (dayIndex) {
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    // Weekday headers
+                    Row(
+                      children: ['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day) {
+                        return Expanded(
+                          child: Center(
+                            child: Text(
+                              day,
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: isDark ? AppTheme.gray400 : AppTheme.gray600,
+                              ),
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                    const SizedBox(height: 8),
+                    // Calendar grid
+                    ...List.generate(6, (weekIndex) {
+                      return Row(
+                        children: List.generate(7, (dayIndex) {
                       final date = startDate.add(
                         Duration(days: weekIndex * 7 + dayIndex),
                       );
-                      final isCurrentMonth = date.month == now.month;
+                          final isCurrentMonth = date.month == now.month;
                       final isToday =
                           date.year == now.year &&
                           date.month == now.month &&
                           date.day == now.day;
-
-                      // Calculate adherence for this day
+                          
+                          // Calculate adherence for this day
                       final dayStart = DateTime(
                         date.year,
                         date.month,
                         date.day,
                       );
-                      final dayEnd = dayStart.add(const Duration(days: 1));
-
-                      int expectedDoses = 0;
-                      for (final med in medications) {
+                          final dayEnd = dayStart.add(const Duration(days: 1));
+                          
+                          int expectedDoses = 0;
+                          for (final med in medications) {
                         if (med.startDate.isBefore(dayEnd) &&
                             (med.endDate == null ||
                                 !med.endDate!.isBefore(dayStart))) {
-                          expectedDoses += med.timesPerDay.length;
-                        }
-                      }
-
+                              expectedDoses += med.timesPerDay.length;
+                            }
+                          }
+                          
                       final isFuture = date.isAfter(referenceDate);
                       final takenDoses = isFuture
                           ? 0
                           : logs
                                 .where(
                                   (log) =>
-                                      log.timestamp.isAfter(dayStart) &&
-                                      log.timestamp.isBefore(dayEnd) &&
+                            log.timestamp.isAfter(dayStart) &&
+                            log.timestamp.isBefore(dayEnd) &&
                                       log.status == MedEventStatus.taken,
                                 )
                                 .length;
-
+                          
                       final percentage = expectedDoses > 0 && !isFuture
                           ? (takenDoses / expectedDoses)
                           : 0.0;
-
-                      Color dayColor;
-                      if (!isCurrentMonth) {
-                        dayColor = isDark ? AppTheme.gray700 : AppTheme.gray100;
+                          
+                          Color dayColor;
+                          if (!isCurrentMonth) {
+                            dayColor = isDark ? AppTheme.gray700 : AppTheme.gray100;
                       } else if (expectedDoses == 0) {
                         dayColor = isDark ? AppTheme.gray700 : AppTheme.gray200;
                       } else if (isFuture) {
                         dayColor = AppTheme.blue200;
-                      } else if (percentage >= 1.0) {
-                        dayColor = AppTheme.teal500;
-                      } else if (percentage > 0) {
-                        dayColor = AppTheme.yellow500;
-                      } else {
-                        dayColor = AppTheme.red500;
-                      }
-
-                      return Expanded(
-                        child: Container(
-                          margin: const EdgeInsets.all(2),
-                          height: 40,
-                          decoration: BoxDecoration(
-                            color: isToday
-                                ? (isDark ? AppTheme.gray700 : AppTheme.gray100)
+                          } else if (percentage >= 1.0) {
+                            dayColor = AppTheme.teal500;
+                          } else if (percentage > 0) {
+                            dayColor = AppTheme.yellow500;
+                          } else {
+                            dayColor = AppTheme.red500;
+                          }
+                          
+                          return Expanded(
+                            child: Container(
+                              margin: const EdgeInsets.all(2),
+                              height: 40,
+                              decoration: BoxDecoration(
+                                color: isToday 
+                                    ? (isDark ? AppTheme.gray700 : AppTheme.gray100)
                                 : dayColor.withValues(
                                     alpha: isCurrentMonth ? 0.3 : 0.1,
                                   ),
-                            borderRadius: BorderRadius.circular(8),
+                                borderRadius: BorderRadius.circular(8),
                             border: isToday
                                 ? Border.all(color: AppTheme.teal500, width: 2)
                                 : null,
-                          ),
-                          child: Center(
-                            child: Text(
-                              '${date.day}',
-                              style: TextStyle(
-                                fontSize: 12,
+                              ),
+                              child: Center(
+                                child: Text(
+                                  '${date.day}',
+                                  style: TextStyle(
+                                    fontSize: 12,
                                 fontWeight: isToday
                                     ? FontWeight.bold
                                     : FontWeight.normal,
-                                color: isCurrentMonth
+                                    color: isCurrentMonth 
                                     ? (isDark
                                           ? AppTheme.white
                                           : AppTheme.gray900)
                                     : (isDark
                                           ? AppTheme.gray500
                                           : AppTheme.gray400),
+                                  ),
+                                ),
                               ),
                             ),
-                          ),
-                        ),
+                          );
+                        }),
                       );
                     }),
-                  );
-                }),
-              ],
-            );
-          },
+                  ],
+                );
+                },
           loading: () => const Center(
             child: Padding(
               padding: EdgeInsets.all(32),
               child: CircularProgressIndicator(),
-            ),
+              ),
           ),
-          error: (_, __) => Center(
-            child: Text(
+              error: (_, __) => Center(
+                child: Text(
               'Error loading medications',
               style: TextStyle(
                 color: isDark ? AppTheme.white : AppTheme.gray900,
               ),
+                ),
+              ),
             ),
-          ),
-        ),
         loading: () => const Center(
           child: Padding(
             padding: EdgeInsets.all(32),
@@ -1005,7 +1008,7 @@ class _CalendarView extends ConsumerWidget {
             'Error loading logs',
             style: TextStyle(color: isDark ? AppTheme.white : AppTheme.gray900),
           ),
-        ),
+          ),
       ),
     );
   }
@@ -1041,19 +1044,19 @@ class _ActivityItem extends StatelessWidget {
       ),
     );
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1F2937) : AppTheme.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: isDark ? AppTheme.gray700 : AppTheme.gray200,
-          width: 1,
-        ),
-      ),
-      child: Row(
-        children: [
+            return Container(
+              margin: const EdgeInsets.only(bottom: 12),
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: isDark ? const Color(0xFF1F2937) : AppTheme.white,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: isDark ? AppTheme.gray700 : AppTheme.gray200,
+                  width: 1,
+                ),
+              ),
+              child: Row(
+                children: [
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
@@ -1063,55 +1066,55 @@ class _ActivityItem extends StatelessWidget {
               shape: BoxShape.circle,
             ),
             child: Icon(
-              isTaken ? AppIcons.check : AppIcons.x,
+                    isTaken ? AppIcons.check : AppIcons.x,
               color: isTaken ? AppTheme.teal600 : AppTheme.gray400,
               size: 20,
             ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  medication.name,
-                  style: TextStyle(
-                    fontWeight: FontWeight.w600,
-                    color: isDark ? AppTheme.white : AppTheme.gray900,
                   ),
-                ),
-                const SizedBox(height: 4),
-                Text(
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                  medication.name,
+                          style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            color: isDark ? AppTheme.white : AppTheme.gray900,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
                   isToday
                       ? 'Today, ${DateFormat('h:mm a').format(log.timestamp)}'
                       : DateFormat('MMM dd, h:mm a').format(log.timestamp),
-                  style: TextStyle(
-                    color: isDark
-                        ? AppTheme.white.withValues(alpha: 0.6)
-                        : AppTheme.gray600,
-                    fontSize: 12,
+                          style: TextStyle(
+                            color: isDark 
+                                ? AppTheme.white.withValues(alpha: 0.6)
+                                : AppTheme.gray600,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-              ],
-            ),
-          ),
           if (isTaken)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
                 color: AppTheme.teal100,
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Text(
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
                 'Taken',
-                style: TextStyle(
+                      style: TextStyle(
                   color: AppTheme.teal700,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-        ],
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
       ),
     );
   }
@@ -1135,7 +1138,7 @@ class _HistoryItem extends StatelessWidget {
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF1F2937) : AppTheme.white,
         borderRadius: BorderRadius.circular(16),
@@ -1144,18 +1147,18 @@ class _HistoryItem extends StatelessWidget {
           width: 1,
         ),
       ),
-      child: Row(
-        children: [
+        child: Row(
+          children: [
           Icon(
-            isTaken ? AppIcons.check : AppIcons.x,
+              isTaken ? AppIcons.check : AppIcons.x,
             color: isTaken ? AppTheme.teal500 : AppTheme.gray400,
           ),
           const SizedBox(width: 12),
           Expanded(
-            child: Column(
+              child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
+                children: [
+                  Text(
                   medicationName,
                   style: TextStyle(
                     fontWeight: FontWeight.w600,
@@ -1163,10 +1166,10 @@ class _HistoryItem extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 4),
-                Text(
+                  Text(
                   DateFormat('MMM dd, yyyy • h:mm a').format(log.timestamp),
                   style: TextStyle(
-                    color: isDark
+                    color: isDark 
                         ? AppTheme.white.withValues(alpha: 0.6)
                         : AppTheme.gray600,
                     fontSize: 12,
@@ -1177,7 +1180,7 @@ class _HistoryItem extends StatelessWidget {
                   Text(
                     medication!.dosage,
                     style: TextStyle(
-                      color: isDark
+                      color: isDark 
                           ? AppTheme.white.withValues(alpha: 0.5)
                           : AppTheme.gray500,
                       fontSize: 11,
@@ -1187,25 +1190,25 @@ class _HistoryItem extends StatelessWidget {
               ],
             ),
           ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
               color: isTaken
                   ? AppTheme.teal100
                   : (isDark ? AppTheme.gray700 : AppTheme.gray100),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Text(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Text(
               log.status.name.toUpperCase(),
-              style: TextStyle(
+                style: TextStyle(
                 color: isTaken
                     ? AppTheme.teal700
                     : (isDark ? AppTheme.gray400 : AppTheme.gray700),
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
-          ),
         ],
       ),
     );

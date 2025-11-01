@@ -369,11 +369,18 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> with SingleTi
                           );
                         }
                         return Column(
-                          children: medications.map((med) => _MedicationCard(
+                          children: medications.map((med) => InkWell(
+                            onTap: () => context.push(
+                              '/medications/${med.medication.id}/details',
+                              extra: {'medication': med.medication, 'scheduledTime': med.scheduledTime},
+                            ),
+                            borderRadius: BorderRadius.circular(12),
+                            child: _MedicationCard(
                             medication: med.medication,
                             scheduledTime: med.scheduledTime,
                             status: med.status,
                             isDark: isDark,
+                            ),
                           )).toList(),
                         );
                       },

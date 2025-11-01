@@ -33,7 +33,8 @@ class MraApp extends ConsumerWidget {
     final darkTheme = baseDarkTheme;
 
     return MaterialApp.router(
-      title: 'Medical Reminder App',
+      title: 'MRA APP',
+      debugShowCheckedModeBanner: false,
       theme: lightTheme,
       darkTheme: darkTheme,
       themeMode: themeMode,

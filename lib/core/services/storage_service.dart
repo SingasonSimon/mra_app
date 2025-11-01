@@ -1,6 +1,8 @@
 import 'dart:io';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:path/path.dart' as p;
 
 class StorageService {
   final FirebaseStorage _storage = FirebaseStorage.instance;
@@ -19,33 +21,36 @@ class StorageService {
     }
 
     try {
-      // Create a reference with a unique path
+      final extension = _determineFileExtension(imageFile.path);
+      final contentType = _contentTypeFromExtension(extension);
+      final timestamp = DateTime.now().millisecondsSinceEpoch;
+      final fileName = '$timestamp$extension';
+
+      // Create a reference with a unique path per medication
       final ref = _storage
           .ref()
           .child('users')
           .child(_userId)
           .child('prescriptions')
-          .child('$medicationId.jpg');
+          .child(medicationId)
+          .child(fileName);
 
-      // Upload the file
-      final uploadTask = ref.putFile(
-        imageFile,
-        SettableMetadata(
-          contentType: 'image/jpeg',
-          customMetadata: {
-            'medicationId': medicationId,
-            'uploadedAt': DateTime.now().toIso8601String(),
-          },
-        ),
+      final metadata = SettableMetadata(
+        contentType: contentType,
+        customMetadata: {
+          'medicationId': medicationId,
+          'uploadedAt': DateTime.now().toIso8601String(),
+        },
       );
 
-      // Wait for upload to complete
-      final snapshot = await uploadTask;
+      final uploadTask = ref.putFile(imageFile, metadata);
+      await uploadTask;
 
-      // Get the download URL
-      final downloadUrl = await snapshot.ref.getDownloadURL();
-
-      return downloadUrl;
+      try {
+        return await _getDownloadUrlWithRetry(ref);
+      } on FirebaseException catch (e) {
+        throw Exception('Failed to upload prescription image: ${e.message}');
+      }
     } catch (e) {
       throw Exception('Failed to upload prescription image: $e');
     }
@@ -67,5 +72,42 @@ class StorageService {
       print('Failed to delete prescription image: $e');
     }
   }
-}
 
+  String _determineFileExtension(String path) {
+    final ext = p.extension(path).toLowerCase();
+    if (ext.isEmpty) {
+      return '.jpg';
+    }
+    return ext;
+  }
+
+  String _contentTypeFromExtension(String ext) {
+    switch (ext) {
+      case '.png':
+        return 'image/png';
+      case '.gif':
+        return 'image/gif';
+      case '.webp':
+        return 'image/webp';
+      default:
+        return 'image/jpeg';
+    }
+  }
+
+  Future<String> _getDownloadUrlWithRetry(Reference ref) async {
+    const maxAttempts = 3;
+    var attempt = 0;
+    while (true) {
+      try {
+        return await ref.getDownloadURL();
+      } on FirebaseException catch (e) {
+        if (e.code == 'object-not-found' && attempt < maxAttempts - 1) {
+          attempt++;
+          await Future.delayed(Duration(milliseconds: 300 * attempt));
+          continue;
+        }
+        rethrow;
+      }
+    }
+  }
+}

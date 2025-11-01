@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../../logs/providers/logs_providers.dart';
 import '../../logs/repository/logs_repository.dart';
 import '../../../core/models/med_log.dart';
+import '../../../widgets/page_enter_transition.dart';
 
 class AnalyticsScreen extends ConsumerWidget {
   const AnalyticsScreen({super.key});
@@ -15,13 +16,11 @@ class AnalyticsScreen extends ConsumerWidget {
     final weekAgo = now.subtract(const Duration(days: 7));
     final logsAsync = ref.watch(logsStreamProvider(now));
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Analytics & Insights'),
-      ),
-      body: logsAsync.when(
+    final content = logsAsync.when(
         data: (logs) {
-          final weekLogs = logs.where((log) => log.timestamp.isAfter(weekAgo)).toList();
+        final weekLogs = logs
+            .where((log) => log.timestamp.isAfter(weekAgo))
+            .toList();
           final stats = _calculateStats(weekLogs);
           final dailyStats = _calculateDailyStats(weekLogs, weekAgo);
 
@@ -62,7 +61,9 @@ class AnalyticsScreen extends ConsumerWidget {
                           sideTitles: SideTitles(
                             showTitles: true,
                             getTitlesWidget: (value, meta) {
-                              final date = weekAgo.add(Duration(days: value.toInt()));
+                            final date = weekAgo.add(
+                              Duration(days: value.toInt()),
+                            );
                               return Text(
                                 DateFormat('E').format(date),
                                 style: const TextStyle(fontSize: 10),
@@ -74,12 +75,19 @@ class AnalyticsScreen extends ConsumerWidget {
                           sideTitles: SideTitles(
                             showTitles: true,
                             getTitlesWidget: (value, meta) {
-                              return Text('${value.toInt()}%', style: const TextStyle(fontSize: 10));
+                            return Text(
+                              '${value.toInt()}%',
+                              style: const TextStyle(fontSize: 10),
+                            );
                             },
                           ),
                         ),
-                        topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                        rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                      topTitles: const AxisTitles(
+                        sideTitles: SideTitles(showTitles: false),
+                      ),
+                      rightTitles: const AxisTitles(
+                        sideTitles: SideTitles(showTitles: false),
+                      ),
                       ),
                       gridData: const FlGridData(show: true),
                       borderData: FlBorderData(show: false),
@@ -93,7 +101,9 @@ class AnalyticsScreen extends ConsumerWidget {
                               toY: percentage,
                               color: _getAdherenceColor(percentage),
                               width: 16,
-                              borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
+                            borderRadius: const BorderRadius.vertical(
+                              top: Radius.circular(4),
+                            ),
                             ),
                           ],
                         );
@@ -116,19 +126,22 @@ class AnalyticsScreen extends ConsumerWidget {
                       sections: [
                         PieChartSectionData(
                           value: stats['taken'] as double,
-                          title: '${((stats['taken'] as double) / (stats['total'] as double) * 100).toStringAsFixed(0)}%',
+                        title:
+                            '${((stats['taken'] as double) / (stats['total'] as double) * 100).toStringAsFixed(0)}%',
                           color: Colors.green,
                           radius: 50,
                         ),
                         PieChartSectionData(
                           value: stats['snoozed'] as double,
-                          title: '${((stats['snoozed'] as double) / (stats['total'] as double) * 100).toStringAsFixed(0)}%',
+                        title:
+                            '${((stats['snoozed'] as double) / (stats['total'] as double) * 100).toStringAsFixed(0)}%',
                           color: Colors.orange,
                           radius: 50,
                         ),
                         PieChartSectionData(
                           value: stats['skipped'] as double,
-                          title: '${((stats['skipped'] as double) / (stats['total'] as double) * 100).toStringAsFixed(0)}%',
+                        title:
+                            '${((stats['skipped'] as double) / (stats['total'] as double) * 100).toStringAsFixed(0)}%',
                           color: Colors.red,
                           radius: 50,
                         ),
@@ -151,14 +164,24 @@ class AnalyticsScreen extends ConsumerWidget {
             ],
           ),
         ),
-      ),
+    );
+
+    return Scaffold(
+      appBar: AppBar(title: const Text('Analytics & Insights')),
+      body: PageEnterTransition(child: content),
     );
   }
 
   Map<String, dynamic> _calculateStats(List<MedLog> logs) {
-    final taken = logs.where((log) => log.status == MedEventStatus.taken).length;
-    final snoozed = logs.where((log) => log.status == MedEventStatus.snoozed).length;
-    final skipped = logs.where((log) => log.status == MedEventStatus.skipped).length;
+    final taken = logs
+        .where((log) => log.status == MedEventStatus.taken)
+        .length;
+    final snoozed = logs
+        .where((log) => log.status == MedEventStatus.snoozed)
+        .length;
+    final skipped = logs
+        .where((log) => log.status == MedEventStatus.skipped)
+        .length;
     final total = logs.length;
     final percentage = total > 0 ? (taken / total * 100) : 0.0;
 
@@ -168,13 +191,19 @@ class AnalyticsScreen extends ConsumerWidget {
     for (int i = 0; i < 30; i++) {
       final date = now.subtract(Duration(days: i));
       final dayLogs = logs.where((log) {
-        final logDate = DateTime(log.timestamp.year, log.timestamp.month, log.timestamp.day);
+        final logDate = DateTime(
+          log.timestamp.year,
+          log.timestamp.month,
+          log.timestamp.day,
+        );
         final checkDate = DateTime(date.year, date.month, date.day);
         return logDate.isAtSameMomentAs(checkDate);
       }).toList();
 
       if (dayLogs.isEmpty) break;
-      final dayTaken = dayLogs.where((log) => log.status == MedEventStatus.taken).length;
+      final dayTaken = dayLogs
+          .where((log) => log.status == MedEventStatus.taken)
+          .length;
       if (dayTaken > 0) {
         streak++;
       } else {
@@ -197,7 +226,11 @@ class AnalyticsScreen extends ConsumerWidget {
     for (int i = 0; i < 7; i++) {
       final date = startDate.add(Duration(days: i));
       final dayLogs = logs.where((log) {
-        final logDate = DateTime(log.timestamp.year, log.timestamp.month, log.timestamp.day);
+        final logDate = DateTime(
+          log.timestamp.year,
+          log.timestamp.month,
+          log.timestamp.day,
+        );
         final checkDate = DateTime(date.year, date.month, date.day);
         return logDate.isAtSameMomentAs(checkDate);
       }).toList();
@@ -205,7 +238,9 @@ class AnalyticsScreen extends ConsumerWidget {
       if (dayLogs.isEmpty) {
         dailyPercentages.add(0);
       } else {
-        final taken = dayLogs.where((log) => log.status == MedEventStatus.taken).length;
+        final taken = dayLogs
+            .where((log) => log.status == MedEventStatus.taken)
+            .length;
         dailyPercentages.add((taken / dayLogs.length * 100));
       }
     }
@@ -252,10 +287,7 @@ class _StatCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    title,
-                    style: Theme.of(context).textTheme.bodyMedium,
-                  ),
+                  Text(title, style: Theme.of(context).textTheme.bodyMedium),
                   const SizedBox(height: 4),
                   Text(
                     value,
@@ -264,10 +296,7 @@ class _StatCard extends StatelessWidget {
                           fontWeight: FontWeight.bold,
                         ),
                   ),
-                  Text(
-                    subtitle,
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
+                  Text(subtitle, style: Theme.of(context).textTheme.bodySmall),
                 ],
               ),
             ),
@@ -277,4 +306,3 @@ class _StatCard extends StatelessWidget {
     );
   }
 }
-

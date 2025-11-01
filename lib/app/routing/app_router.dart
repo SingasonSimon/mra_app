@@ -8,6 +8,7 @@ import '../../features/auth/providers/auth_providers.dart';
 import '../../features/dashboard/presentation/dashboard_screen.dart';
 import '../../features/medication/presentation/add_medication_screen.dart';
 import '../../features/medication/presentation/medication_list_screen.dart';
+import '../../features/medication/presentation/medication_details_screen.dart';
 import '../../features/tips/presentation/tips_screen.dart';
 import '../../features/profile/presentation/profile_screen.dart';
 import '../../features/logs/presentation/log_medication_screen.dart';
@@ -43,13 +44,10 @@ class SplashScreen extends ConsumerWidget {
             context.go('/welcome');
           }
         });
-        return const Scaffold(
-          body: Center(child: CircularProgressIndicator()),
-        );
+        return const Scaffold(body: Center(child: CircularProgressIndicator()));
       },
-      loading: () => const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      ),
+      loading: () =>
+          const Scaffold(body: Center(child: CircularProgressIndicator())),
       error: (error, stack) => Scaffold(
         body: Center(
           child: Column(
@@ -71,111 +69,214 @@ class SplashScreen extends ConsumerWidget {
   }
 }
 
+CustomTransitionPage<T> _buildPageWithDefaultTransition<T>(
+  GoRouterState state,
+  Widget child,
+) {
+  return CustomTransitionPage<T>(
+    key: state.pageKey,
+    child: child,
+    transitionDuration: const Duration(milliseconds: 450),
+    reverseTransitionDuration: const Duration(milliseconds: 300),
+    transitionsBuilder: (context, animation, secondaryAnimation, child) {
+      final curvedAnimation = CurvedAnimation(
+        parent: animation,
+        curve: Curves.easeOutCubic,
+        reverseCurve: Curves.easeInCubic,
+      );
+
+      return FadeTransition(
+        opacity: curvedAnimation,
+        child: SlideTransition(
+          position: Tween<Offset>(
+            begin: const Offset(0, 0.08),
+            end: Offset.zero,
+          ).animate(curvedAnimation),
+          child: child,
+        ),
+      );
+    },
+  );
+}
+
 final GoRouter appRouter = GoRouter(
   initialLocation: '/splash',
   navigatorKey: NotificationsService.navigatorKey,
   routes: <RouteBase>[
     GoRoute(
       path: '/splash',
-      builder: (context, state) => const SplashScreen(),
+      pageBuilder: (context, state) => NoTransitionPage<void>(
+        key: state.pageKey,
+        child: const SplashScreen(),
+      ),
     ),
     GoRoute(
       path: '/welcome',
-      builder: (context, state) => const WelcomeScreen(),
+      pageBuilder: (context, state) =>
+          _buildPageWithDefaultTransition<void>(state, const WelcomeScreen()),
     ),
     GoRoute(
       path: '/login',
-      builder: (context, state) => const ModernLoginScreen(),
+      pageBuilder: (context, state) => _buildPageWithDefaultTransition<void>(
+        state,
+        const ModernLoginScreen(),
+      ),
     ),
     GoRoute(
       path: '/signup',
-      builder: (context, state) => const ModernSignUpScreen(),
+      pageBuilder: (context, state) => _buildPageWithDefaultTransition<void>(
+        state,
+        const ModernSignUpScreen(),
+      ),
     ),
     GoRoute(
       path: '/',
-      builder: (context, state) => const DashboardScreen(),
+      pageBuilder: (context, state) =>
+          _buildPageWithDefaultTransition<void>(state, const DashboardScreen()),
     ),
     GoRoute(
       path: '/medications',
-      builder: (context, state) => const MedicationListScreen(),
+      pageBuilder: (context, state) => _buildPageWithDefaultTransition<void>(
+        state,
+        const MedicationListScreen(),
+      ),
     ),
     GoRoute(
       path: '/medications/add',
-      builder: (context, state) {
+      pageBuilder: (context, state) {
         final medication = state.extra as Medication?;
-        return AddMedicationScreen(medication: medication);
+        return _buildPageWithDefaultTransition<void>(
+          state,
+          AddMedicationScreen(medication: medication),
+        );
+      },
+    ),
+    GoRoute(
+      path: '/medications/:id/details',
+      pageBuilder: (context, state) {
+        final extra = state.extra as Map<String, dynamic>?;
+        final medication = extra?['medication'] as Medication? ??
+            (state.extra as Medication?);
+        final scheduledTime = extra?['scheduledTime'] as DateTime?;
+        
+        if (medication == null) {
+          // Fallback: try to get from medication list if needed
+          return _buildPageWithDefaultTransition<void>(
+            state,
+            const Scaffold(
+              body: Center(child: Text('Medication not found')),
+            ),
+          );
+        }
+        
+        return _buildPageWithDefaultTransition<void>(
+          state,
+          MedicationDetailsScreen(
+            medication: medication,
+            scheduledTime: scheduledTime,
+          ),
+        );
       },
     ),
     GoRoute(
       path: '/tips',
-      builder: (context, state) => const TipsScreen(),
+      pageBuilder: (context, state) =>
+          _buildPageWithDefaultTransition<void>(state, const TipsScreen()),
     ),
     GoRoute(
       path: '/profile',
-      builder: (context, state) => const ProfileScreen(),
+      pageBuilder: (context, state) =>
+          _buildPageWithDefaultTransition<void>(state, const ProfileScreen()),
     ),
     GoRoute(
       path: '/logs/:medicationId',
-      builder: (context, state) {
+      pageBuilder: (context, state) {
         final medicationId = state.pathParameters['medicationId']!;
-        return LogMedicationScreen(medicationId: medicationId);
+        return _buildPageWithDefaultTransition<void>(
+          state,
+          LogMedicationScreen(medicationId: medicationId),
+        );
       },
     ),
     GoRoute(
       path: '/history',
-      builder: (context, state) => const HistoryScreen(),
+      pageBuilder: (context, state) =>
+          _buildPageWithDefaultTransition<void>(state, const HistoryScreen()),
     ),
     GoRoute(
       path: '/settings',
-      builder: (context, state) => const SettingsScreen(),
+      pageBuilder: (context, state) =>
+          _buildPageWithDefaultTransition<void>(state, const SettingsScreen()),
     ),
     GoRoute(
       path: '/analytics',
-      builder: (context, state) => const AnalyticsScreen(),
+      pageBuilder: (context, state) =>
+          _buildPageWithDefaultTransition<void>(state, const AnalyticsScreen()),
     ),
     GoRoute(
       path: '/achievements',
-      builder: (context, state) => const AchievementsScreen(),
+      pageBuilder: (context, state) => _buildPageWithDefaultTransition<void>(
+        state,
+        const AchievementsScreen(),
+      ),
     ),
     GoRoute(
       path: '/export',
-      builder: (context, state) => const ExportScreen(),
+      pageBuilder: (context, state) =>
+          _buildPageWithDefaultTransition<void>(state, const ExportScreen()),
     ),
     GoRoute(
       path: '/appointments',
-      builder: (context, state) => const AppointmentListScreen(),
+      pageBuilder: (context, state) => _buildPageWithDefaultTransition<void>(
+        state,
+        const AppointmentListScreen(),
+      ),
     ),
     GoRoute(
       path: '/appointments/add',
-      builder: (context, state) {
+      pageBuilder: (context, state) {
         final appointment = state.extra as Appointment?;
-        return AddAppointmentScreen(appointment: appointment);
+        return _buildPageWithDefaultTransition<void>(
+          state,
+          AddAppointmentScreen(appointment: appointment),
+        );
       },
     ),
     GoRoute(
       path: '/appointments/:id',
-      builder: (context, state) {
+      pageBuilder: (context, state) {
         final appointmentId = state.pathParameters['id']!;
-        return AppointmentDetailScreen(appointmentId: appointmentId);
+        return _buildPageWithDefaultTransition<void>(
+          state,
+          AppointmentDetailScreen(appointmentId: appointmentId),
+        );
       },
     ),
     GoRoute(
       path: '/emergency',
-      builder: (context, state) => const EmergencyScreen(),
+      pageBuilder: (context, state) =>
+          _buildPageWithDefaultTransition<void>(state, const EmergencyScreen()),
     ),
     GoRoute(
       path: '/profile/edit',
-      builder: (context, state) => const EditProfileScreen(),
+      pageBuilder: (context, state) => _buildPageWithDefaultTransition<void>(
+        state,
+        const EditProfileScreen(),
+      ),
     ),
     GoRoute(
       path: '/profile/medical-history',
-      builder: (context, state) => const MedicalHistoryScreen(),
+      pageBuilder: (context, state) => _buildPageWithDefaultTransition<void>(
+        state,
+        const MedicalHistoryScreen(),
+      ),
     ),
     GoRoute(
       path: '/profile/privacy',
-      builder: (context, state) => const PrivacyDataScreen(),
+      pageBuilder: (context, state) => _buildPageWithDefaultTransition<void>(
+        state,
+        const PrivacyDataScreen(),
+      ),
     ),
   ],
 );
-
-

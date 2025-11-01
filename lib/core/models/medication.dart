@@ -13,7 +13,6 @@ class Medication {
   final DateTime? refillDate;
   final bool manualRefillDate;
   final int? dosesRemaining;
-  final String? prescriptionImageUrl;
 
   Medication({
     required this.id,
@@ -28,7 +27,6 @@ class Medication {
     this.refillDate,
     this.manualRefillDate = false,
     this.dosesRemaining,
-    this.prescriptionImageUrl,
   });
 
   Map<String, dynamic> toMap() {
@@ -44,18 +42,18 @@ class Medication {
       'refillDate': refillDate?.millisecondsSinceEpoch,
       'manualRefillDate': manualRefillDate,
       'dosesRemaining': dosesRemaining,
-      'prescriptionImageUrl': prescriptionImageUrl,
     };
   }
 
   static Medication fromMap(String id, Map<String, dynamic> map) {
     List<TimeOfDay> parseTimes(List<dynamic> list) {
-      return list
-          .map((e) {
-            final parts = (e as String).split(':');
-            return TimeOfDay(hour: int.parse(parts[0]), minute: int.parse(parts[1]));
-          })
-          .toList();
+      return list.map((e) {
+        final parts = (e as String).split(':');
+        return TimeOfDay(
+          hour: int.parse(parts[0]),
+          minute: int.parse(parts[1]),
+        );
+      }).toList();
     }
 
     return Medication(
@@ -65,15 +63,16 @@ class Medication {
       timesPerDay: parseTimes(map['timesPerDay'] as List<dynamic>),
       frequency: map['frequency'] as String,
       startDate: DateTime.fromMillisecondsSinceEpoch(map['startDate'] as int),
-      endDate: map['endDate'] != null ? DateTime.fromMillisecondsSinceEpoch(map['endDate'] as int) : null,
+      endDate: map['endDate'] != null
+          ? DateTime.fromMillisecondsSinceEpoch(map['endDate'] as int)
+          : null,
       notes: map['notes'] as String?,
       refillThreshold: map['refillThreshold'] as int?,
-      refillDate: map['refillDate'] != null ? DateTime.fromMillisecondsSinceEpoch(map['refillDate'] as int) : null,
+      refillDate: map['refillDate'] != null
+          ? DateTime.fromMillisecondsSinceEpoch(map['refillDate'] as int)
+          : null,
       manualRefillDate: map['manualRefillDate'] as bool? ?? false,
       dosesRemaining: map['dosesRemaining'] as int?,
-      prescriptionImageUrl: map['prescriptionImageUrl'] as String?,
     );
   }
 }
-
-
