@@ -8,6 +8,7 @@ import '../providers/logs_providers.dart';
 import '../../../widgets/bottom_navigation.dart';
 import '../../../app/theme/app_theme.dart';
 import '../../medication/providers/medication_providers.dart';
+import '../../../utils/navigation_helper.dart';
 import 'dart:math' as math;
 
 class HistoryScreen extends ConsumerStatefulWidget {
@@ -35,7 +36,8 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> with SingleTicker
 
   @override
   Widget build(BuildContext context) {
-    final logsAsync = ref.watch(logsStreamProvider(DateTime.now()));
+    final now = DateTime.now();
+    final logsAsync = ref.watch(logsStreamProvider(now));
     final medicationsAsync = ref.watch(medicationsStreamProvider);
 
     // Calculate 7-day adherence based on expected vs taken doses
@@ -157,9 +159,9 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> with SingleTicker
               ),
               child: Row(
                 children: [
-                  IconButton(
+          IconButton(
                     icon: const Icon(AppIcons.arrowLeft, color: AppTheme.white),
-                    onPressed: () => context.pop(),
+                    onPressed: () => context.safePop(),
                     padding: EdgeInsets.zero,
                     constraints: const BoxConstraints(),
                   ),
@@ -329,7 +331,8 @@ class _ChartView extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final logsAsync = ref.watch(logsStreamProvider(DateTime.now()));
+    final now = DateTime.now();
+    final logsAsync = ref.watch(logsStreamProvider(now));
     final medicationsAsync = ref.watch(medicationsStreamProvider);
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
@@ -398,13 +401,13 @@ class _ChartView extends ConsumerWidget {
                 const SizedBox(height: 24),
                 SizedBox(
                   height: 200,
-                  child: logsAsync.when(
-                    data: (logs) => medicationsAsync.when(
+            child: logsAsync.when(
+                    data: (logs) => medicationsAsync.maybeWhen(
                       data: (medications) {
                         // Calculate daily adherence for this week
-                        final now = DateTime.now();
+                        final currentNow = DateTime.now();
                         final weekData = List.generate(7, (index) {
-                          final date = now.subtract(Duration(days: 6 - index));
+                          final date = currentNow.subtract(Duration(days: 6 - index));
                           final dayStart = DateTime(date.year, date.month, date.day);
                           final dayEnd = dayStart.add(const Duration(days: 1));
                           
@@ -430,15 +433,15 @@ class _ChartView extends ConsumerWidget {
                         // Show empty state if no medications or no data
                         if (medications.isEmpty || weekData.every((d) => (d['value'] as int) == 0)) {
                           return Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
                                 AppIcons.barChart3,
                                 size: 48,
                                 color: isDark ? AppTheme.gray400 : AppTheme.gray400,
                               ),
                               const SizedBox(height: 12),
-                              Text(
+                        Text(
                                 medications.isEmpty 
                                     ? 'No medications yet' 
                                     : 'No adherence data yet',
@@ -448,7 +451,7 @@ class _ChartView extends ConsumerWidget {
                                 ),
                               ),
                               const SizedBox(height: 4),
-                              Text(
+                        Text(
                                 medications.isEmpty
                                     ? 'Add medications to track adherence'
                                     : 'Log your medication doses to see trends',
@@ -466,7 +469,7 @@ class _ChartView extends ConsumerWidget {
                         
                         return _SimpleLineChart(data: weekData, isDark: isDark);
                       },
-                      loading: () => Padding(
+                      orElse: () => Padding(
                         padding: const EdgeInsets.all(32),
                         child: Center(
                           child: Column(
@@ -514,19 +517,19 @@ class _ChartView extends ConsumerWidget {
                       child: Center(
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
-                          children: [
+                                children: [
                             CircularProgressIndicator(
                               color: AppTheme.teal500,
                             ),
                             const SizedBox(height: 16),
-                            Text(
+                                  Text(
                               'Loading logs...',
                               style: TextStyle(
                                 color: isDark ? AppTheme.white : AppTheme.gray900,
+                                  ),
+                                  ),
+                                ],
                               ),
-                            ),
-                          ],
-                        ),
                       ),
                     ),
                     error: (error, stack) {
@@ -682,11 +685,11 @@ class _ChartView extends ConsumerWidget {
 class _CalendarView extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final logsAsync = ref.watch(logsStreamProvider(DateTime.now()));
+    final now = DateTime.now();
+    final logsAsync = ref.watch(logsStreamProvider(now));
     final medicationsAsync = ref.watch(medicationsStreamProvider);
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    final now = DateTime.now();
     
     return SingleChildScrollView(
       padding: const EdgeInsets.all(20),
@@ -713,7 +716,7 @@ class _CalendarView extends ConsumerWidget {
               ),
             ),
             child: logsAsync.when(
-              data: (logs) => medicationsAsync.when(
+              data: (logs) => medicationsAsync.maybeWhen(
                 data: (medications) {
                 
                 // Generate calendar grid for current month
@@ -824,13 +827,7 @@ class _CalendarView extends ConsumerWidget {
                   ],
                 );
                 },
-                loading: () => const Center(child: CircularProgressIndicator()),
-                error: (_, __) => Center(
-                  child: Text(
-                    'Error loading medications',
-                    style: TextStyle(color: isDark ? AppTheme.white : AppTheme.gray900),
-                  ),
-                ),
+                orElse: () => const Center(child: CircularProgressIndicator()),
               ),
               loading: () => const Center(child: CircularProgressIndicator()),
               error: (_, __) => Center(
@@ -860,7 +857,8 @@ class _CalendarView extends ConsumerWidget {
 class _ListView extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final logsAsync = ref.watch(logsStreamProvider(DateTime.now()));
+    final now = DateTime.now();
+    final logsAsync = ref.watch(logsStreamProvider(now));
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
@@ -977,7 +975,7 @@ class _ActivityItem extends StatelessWidget {
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF1F2937) : AppTheme.white,
         borderRadius: BorderRadius.circular(16),
@@ -986,8 +984,8 @@ class _ActivityItem extends StatelessWidget {
           width: 1,
         ),
       ),
-      child: Row(
-        children: [
+        child: Row(
+          children: [
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
@@ -1004,10 +1002,10 @@ class _ActivityItem extends StatelessWidget {
           ),
           const SizedBox(width: 12),
           Expanded(
-            child: Column(
+              child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
+                children: [
+                  Text(
                   'Medication ${log.status.name}',
                   style: TextStyle(
                     fontWeight: FontWeight.w600,
@@ -1015,7 +1013,7 @@ class _ActivityItem extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 4),
-                Text(
+                  Text(
                   isToday
                       ? 'Today, ${DateFormat('h:mm a').format(log.timestamp)}'
                       : DateFormat('MMM dd, h:mm a').format(log.timestamp),

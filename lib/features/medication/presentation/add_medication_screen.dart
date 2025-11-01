@@ -214,10 +214,9 @@ class _AddMedicationScreenState extends ConsumerState<AddMedicationScreen> {
   }
 
   String _getDisplayTime(TimeOfDay time) {
-    final hour = time.hour > 12 ? time.hour - 12 : (time.hour == 0 ? 12 : time.hour);
-    final minute = time.minute.toString().padLeft(2, '0');
-    final amPm = time.hour >= 12 ? 'AM' : 'PM';
-    return '$hour:$minute $amPm';
+    // Use MaterialLocalizations to respect device's 12/24-hour format preference
+    final localizations = MaterialLocalizations.of(context);
+    return localizations.formatTimeOfDay(time, alwaysUse24HourFormat: MediaQuery.of(context).alwaysUse24HourFormat);
   }
 
   Future<void> _saveMedication() async {
@@ -284,24 +283,34 @@ class _AddMedicationScreenState extends ConsumerState<AddMedicationScreen> {
         medicationId = await repository.addMedication(finalMedication);
       }
 
-      // Schedule notifications if enabled
+      // Schedule notifications if enabled (errors are handled internally)
       if (_notificationsEnabled) {
-        for (int i = 0; i < _selectedTimes.length; i++) {
-          await notificationsService.scheduleRecurringReminder(
-            baseId: medicationId.hashCode + i,
-            title: 'Medication Reminder',
-            body: 'Time to take ${finalMedication.name} (${finalMedication.dosage})',
-            time: _selectedTimes[i],
-            medicationId: medicationId,
-          );
+        try {
+          for (int i = 0; i < _selectedTimes.length; i++) {
+            await notificationsService.scheduleRecurringReminder(
+              baseId: medicationId.hashCode + i,
+              title: 'Medication Reminder',
+              body: 'Time to take ${finalMedication.name} (${finalMedication.dosage})',
+              time: _selectedTimes[i],
+              medicationId: medicationId,
+            );
+          }
+        } catch (e) {
+          debugPrint('Error scheduling medication reminders: $e');
+          // Don't show error to user - medication was saved successfully
         }
       }
 
       if (_refillReminder && finalMedication.refillDate != null) {
-        await notificationsService.scheduleRefillReminder(
-          id: medicationId.hashCode + 10000,
-          medication: finalMedication,
-        );
+        try {
+          await notificationsService.scheduleRefillReminder(
+            id: medicationId.hashCode + 10000,
+            medication: finalMedication,
+          );
+        } catch (e) {
+          debugPrint('Error scheduling refill reminder: $e');
+          // Don't show error to user - medication was saved successfully
+        }
       }
 
       if (mounted) {

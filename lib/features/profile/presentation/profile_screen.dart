@@ -5,6 +5,7 @@ import '../../auth/providers/auth_providers.dart';
 import '../../../widgets/bottom_navigation.dart';
 import '../../../app/theme/app_theme.dart';
 import '../providers/settings_providers.dart';
+import '../../../utils/navigation_helper.dart';
 
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
@@ -55,7 +56,7 @@ class ProfileScreen extends ConsumerWidget {
                     children: [
                       IconButton(
                         icon: const Icon(AppIcons.arrowLeft, color: AppTheme.white),
-                        onPressed: () => context.pop(),
+                        onPressed: () => context.safePop(),
                         padding: EdgeInsets.zero,
                         constraints: const BoxConstraints(),
                       ),

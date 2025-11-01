@@ -5,6 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../medication/providers/medication_providers.dart';
 import '../../../widgets/bottom_navigation.dart';
 import '../../../app/theme/app_theme.dart';
+import '../../../utils/navigation_helper.dart';
 
 class EmergencyScreen extends ConsumerWidget {
   const EmergencyScreen({super.key});

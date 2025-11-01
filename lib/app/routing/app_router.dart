@@ -25,6 +25,7 @@ import '../../features/profile/presentation/medical_history_screen.dart';
 import '../../features/profile/presentation/privacy_data_screen.dart';
 import '../../core/models/medication.dart';
 import '../../core/models/appointment.dart';
+import '../../core/services/notifications_service.dart';
 
 class SplashScreen extends ConsumerWidget {
   const SplashScreen({super.key});
@@ -72,6 +73,7 @@ class SplashScreen extends ConsumerWidget {
 
 final GoRouter appRouter = GoRouter(
   initialLocation: '/splash',
+  navigatorKey: NotificationsService.navigatorKey,
   routes: <RouteBase>[
     GoRoute(
       path: '/splash',

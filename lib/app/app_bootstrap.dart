@@ -21,6 +21,10 @@ Future<void> bootstrapApp() async {
 
   // Initialize notifications
   final notificationsService = NotificationsService();
+  // Initialize navigator key for notification navigation
+  if (NotificationsService.navigatorKey == null) {
+    NotificationsService.navigatorKey = GlobalKey<NavigatorState>();
+  }
   await notificationsService.initialize();
 }
 

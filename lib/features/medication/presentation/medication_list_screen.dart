@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../providers/medication_providers.dart';
 import '../../../widgets/bottom_navigation.dart';
 import '../../../app/theme/app_theme.dart';
+import '../../../utils/navigation_helper.dart';
 import 'package:intl/intl.dart';
 
 class MedicationListScreen extends ConsumerStatefulWidget {
@@ -23,14 +24,13 @@ class _MedicationListScreenState extends ConsumerState<MedicationListScreen> {
     super.dispose();
   }
 
-  String _formatTimes(List timesPerDay) {
+  String _formatTimes(BuildContext context, List timesPerDay) {
     if (timesPerDay.isEmpty) return 'No schedule';
     
+    final localizations = MaterialLocalizations.of(context);
+    final use24Hour = MediaQuery.of(context).alwaysUse24HourFormat;
     final formatted = timesPerDay.map((time) {
-      final hour = time.hour > 12 ? time.hour - 12 : (time.hour == 0 ? 12 : time.hour);
-      final minute = time.minute.toString().padLeft(2, '0');
-      final amPm = time.hour >= 12 ? 'PM' : 'AM';
-      return '$hour:$minute $amPm';
+      return localizations.formatTimeOfDay(time, alwaysUse24HourFormat: use24Hour);
     }).join(', ');
     
     return formatted;
@@ -115,7 +115,7 @@ class _MedicationListScreenState extends ConsumerState<MedicationListScreen> {
                     children: [
                       IconButton(
                         icon: const Icon(AppIcons.arrowLeft, color: AppTheme.white),
-                        onPressed: () => context.pop(),
+                        onPressed: () => context.safePop(),
                         padding: EdgeInsets.zero,
                         constraints: const BoxConstraints(),
                       ),
@@ -330,7 +330,7 @@ class _MedicationCard extends StatelessWidget {
   final medication;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
-  final String Function(List) formatTimes;
+  final String Function(BuildContext, List) formatTimes;
   final String Function(int) getFrequency;
   final String? Function(dynamic) getSupplyDays;
 
@@ -425,7 +425,7 @@ class _MedicationCard extends StatelessWidget {
                   ),
                   const SizedBox(width: 6),
                   Text(
-                    formatTimes(medication.timesPerDay),
+                    formatTimes(context, medication.timesPerDay),
                     style: TextStyle(
                       fontSize: 13,
                       color: isDark

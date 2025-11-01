@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -7,23 +8,20 @@ import '../../../widgets/bottom_navigation.dart';
 import '../../../app/theme/app_theme.dart';
 import '../../../core/models/medication.dart';
 import '../../../core/models/med_log.dart';
+import '../../logs/repository/logs_repository.dart';
+import '../../logs/providers/logs_providers.dart';
+import '../../medication/providers/medication_providers.dart';
 
-class DashboardScreen extends ConsumerWidget {
+class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
 
-  String _getGreeting() {
-    final hour = DateTime.now().hour;
-    if (hour < 12) {
-      return 'Good Morning';
-    } else if (hour < 17) {
-      return 'Good Afternoon';
-    } else {
-      return 'Good Evening';
-    }
-  }
-
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<DashboardScreen> createState() => _DashboardScreenState();
+}
+
+class _DashboardScreenState extends ConsumerState<DashboardScreen> {
+  @override
+  Widget build(BuildContext context) {
     final profileAsync = ref.watch(userProfileProvider);
     final adherenceAsyncValue = ref.watch(todayAdherenceProvider);
     final nextDoseAsyncValue = ref.watch(nextDoseProvider);
@@ -227,22 +225,26 @@ class DashboardScreen extends ConsumerWidget {
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Text(
-                                      'Next dose in ${nextDose.minutesRemaining} minutes',
-                                      style: const TextStyle(
-                                        fontSize: 15,
-                                        fontWeight: FontWeight.w600,
-                                      ),
+                                    _NextDoseCountdown(
+                                      scheduledTime: nextDose.scheduledTime,
                                     ),
                                     const SizedBox(height: 4),
-                                    Text(
-                                      '${nextDose.medication.name} ${nextDose.medication.dosage} at ${nextDose.formattedTime}',
-                                      style: TextStyle(
-                                        fontSize: 13,
-                                        color: isDark
-                                            ? AppTheme.white.withValues(alpha: 0.6)
-                                            : AppTheme.gray600,
-                                      ),
+                                    Builder(
+                                      builder: (context) {
+                                        final localizations = MaterialLocalizations.of(context);
+                                        final use24Hour = MediaQuery.of(context).alwaysUse24HourFormat;
+                                        final timeOfDay = TimeOfDay.fromDateTime(nextDose.scheduledTime);
+                                        final formattedTime = localizations.formatTimeOfDay(timeOfDay, alwaysUse24HourFormat: use24Hour);
+                                        return Text(
+                                          '${nextDose.medication.name} ${nextDose.medication.dosage} at $formattedTime',
+                                          style: TextStyle(
+                                            fontSize: 13,
+                                            color: isDark
+                                                ? AppTheme.white.withValues(alpha: 0.6)
+                                                : AppTheme.gray600,
+                                          ),
+                                        );
+                                      },
                                     ),
                                   ],
                                 ),
@@ -251,10 +253,11 @@ class DashboardScreen extends ConsumerWidget {
                           ),
                         );
                       },
-                      loading: () => const SizedBox.shrink(),
+                      loading: () => const Center(child: CircularProgressIndicator()),
                       error: (_, __) => const SizedBox.shrink(),
                     ),
-                    // Quick Action Buttons
+                    const SizedBox(height: 20),
+                    // Quick Actions
                     Row(
                       children: [
                         Expanded(
@@ -271,7 +274,7 @@ class DashboardScreen extends ConsumerWidget {
                             icon: AppIcons.barChart3,
                             label: 'History',
                             color: AppTheme.blue500,
-                            onTap: () => context.push('/history'),
+                            onTap: () => context.go('/history'),
                           ),
                         ),
                         const SizedBox(width: 12),
@@ -285,8 +288,8 @@ class DashboardScreen extends ConsumerWidget {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 24),
-                    // Today's Medication Section
+                    const SizedBox(height: 20),
+                    // Today's Medication
                     Text(
                       "Today's Medication",
                       style: TextStyle(
@@ -295,10 +298,10 @@ class DashboardScreen extends ConsumerWidget {
                         color: isDark ? AppTheme.white : AppTheme.gray900,
                       ),
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 12),
                     todayMedsAsync.when(
-                      data: (meds) {
-                        if (meds.isEmpty) {
+                      data: (medications) {
+                        if (medications.isEmpty) {
                           return Container(
                             padding: const EdgeInsets.all(32),
                             decoration: BoxDecoration(
@@ -306,55 +309,41 @@ class DashboardScreen extends ConsumerWidget {
                               borderRadius: BorderRadius.circular(16),
                               border: Border.all(
                                 color: isDark ? AppTheme.gray700 : AppTheme.gray200,
+                                width: 1,
                               ),
                             ),
-                            child: Column(
-                              children: [
-                                Icon(
-                                  AppIcons.pill,
-                                  size: 48,
-                                  color: AppTheme.gray400,
-                                ),
-                                const SizedBox(height: 16),
-                                Text(
-                                  'No medications scheduled for today',
-                                  style: TextStyle(
-                                    color: isDark
-                                        ? AppTheme.white.withValues(alpha: 0.6)
-                                        : AppTheme.gray600,
-                                    fontSize: 16,
+                            child: Center(
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    AppIcons.pill,
+                                    size: 48,
+                                    color: isDark ? AppTheme.gray400 : AppTheme.gray400,
                                   ),
-                                ),
-                              ],
+                                  const SizedBox(height: 12),
+                                  Text(
+                                    'No medications scheduled for today',
+                                    style: TextStyle(
+                                      color: isDark ? AppTheme.white : AppTheme.gray900,
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                           );
                         }
                         return Column(
-                          children: meds.map((med) => _MedicationCard(
+                          children: medications.map((med) => _MedicationCard(
                             medication: med.medication,
                             scheduledTime: med.scheduledTime,
                             status: med.status,
-                            onMarkTaken: () {
-                              // TODO: Implement mark as taken
-                              context.push('/logs/${med.medication.id}');
-                            },
+                            isDark: isDark,
                           )).toList(),
                         );
                       },
-                      loading: () => const Center(
-                        child: Padding(
-                          padding: EdgeInsets.all(32),
-                          child: CircularProgressIndicator(),
-                        ),
-                      ),
-                      error: (error, stack) => Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        child: Text('Error: $error'),
-                      ),
+                      loading: () => const Center(child: CircularProgressIndicator()),
+                      error: (_, __) => const SizedBox.shrink(),
                     ),
                   ],
                 ),
@@ -364,6 +353,93 @@ class DashboardScreen extends ConsumerWidget {
         ),
       ),
       bottomNavigationBar: const BottomNavigation(currentIndex: 0),
+    );
+  }
+
+  String _getGreeting() {
+    final hour = DateTime.now().hour;
+    if (hour < 12) {
+      return 'Good Morning';
+    } else if (hour < 17) {
+      return 'Good Afternoon';
+    } else {
+      return 'Good Evening';
+    }
+  }
+}
+
+// Dynamic countdown widget for next dose
+class _NextDoseCountdown extends StatefulWidget {
+  final DateTime scheduledTime;
+
+  const _NextDoseCountdown({
+    required this.scheduledTime,
+  });
+
+  @override
+  State<_NextDoseCountdown> createState() => _NextDoseCountdownState();
+}
+
+class _NextDoseCountdownState extends State<_NextDoseCountdown> {
+  Timer? _timer;
+  String _countdownText = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _updateCountdown();
+    // Update every second
+    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) {
+        _updateCountdown();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  void _updateCountdown() {
+    final now = DateTime.now();
+    final difference = widget.scheduledTime.difference(now);
+
+    if (difference.isNegative) {
+      setState(() {
+        _countdownText = 'Time is due now';
+      });
+    } else {
+      final totalSeconds = difference.inSeconds;
+      final hours = totalSeconds ~/ 3600;
+      final minutes = (totalSeconds % 3600) ~/ 60;
+      final seconds = totalSeconds % 60;
+
+      if (hours > 0) {
+        setState(() {
+          _countdownText = 'Next dose in $hours h ${minutes} m';
+        });
+      } else if (minutes > 0) {
+        setState(() {
+          _countdownText = 'Next dose in $minutes m ${seconds}s';
+        });
+      } else {
+        setState(() {
+          _countdownText = 'Next dose in ${seconds}s';
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      _countdownText,
+      style: const TextStyle(
+        fontSize: 15,
+        fontWeight: FontWeight.w600,
+      ),
     );
   }
 }
@@ -387,21 +463,21 @@ class _QuickActionButton extends StatelessWidget {
       onTap: onTap,
       borderRadius: BorderRadius.circular(12),
       child: Container(
-        height: 80,
+        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
         decoration: BoxDecoration(
           color: color,
           borderRadius: BorderRadius.circular(12),
         ),
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, color: Colors.white, size: 28),
+            Icon(icon, color: Colors.white, size: 24),
             const SizedBox(height: 8),
             Text(
               label,
               style: const TextStyle(
                 color: Colors.white,
-                fontSize: 14,
+                fontSize: 13,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -412,122 +488,167 @@ class _QuickActionButton extends StatelessWidget {
   }
 }
 
-class _MedicationCard extends StatelessWidget {
+class _MedicationCard extends ConsumerWidget {
   final Medication medication;
   final DateTime scheduledTime;
-  final MedEventStatus status;
-  final VoidCallback onMarkTaken;
+  final MedEventStatus? status;
+  final bool isDark;
 
   const _MedicationCard({
     required this.medication,
     required this.scheduledTime,
-    required this.status,
-    required this.onMarkTaken,
+    this.status,
+    required this.isDark,
   });
 
+  // Check if medication is recurring (no end date or frequency is daily)
+  bool get _isRecurring => medication.endDate == null || medication.frequency.toLowerCase().contains('daily');
+
+  Future<void> _markAsTaken(BuildContext context, WidgetRef ref) async {
+    try {
+      final logsRepo = ref.read(logsRepositoryProvider);
+      final now = DateTime.now();
+      final scheduledDateTime = DateTime(
+        now.year,
+        now.month,
+        now.day,
+        scheduledTime.hour,
+        scheduledTime.minute,
+      );
+
+      final log = MedLog(
+        id: '',
+        medicationId: medication.id,
+        timestamp: now,
+        status: MedEventStatus.taken,
+        scheduledDoseTime: scheduledDateTime,
+      );
+
+      await logsRepo.logMedicationEvent(log);
+
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Medication marked as taken'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
   @override
-  Widget build(BuildContext context) {
-    final isTaken = status == MedEventStatus.taken;
-    final isUpcoming = scheduledTime.isAfter(DateTime.now());
-    final hour = scheduledTime.hour;
-    final minute = scheduledTime.minute;
-    final amPm = hour >= 12 ? 'PM' : 'AM';
-    final displayHour = hour > 12 ? hour - 12 : (hour == 0 ? 12 : hour);
-    final timeStr = '${displayHour.toString().padLeft(2, '0')}:${minute.toString().padLeft(2, '0')} $amPm';
-    
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-    
+  Widget build(BuildContext context, WidgetRef ref) {
+    final localizations = MaterialLocalizations.of(context);
+    final use24Hour = MediaQuery.of(context).alwaysUse24HourFormat;
+    final timeOfDay = TimeOfDay.fromDateTime(scheduledTime);
+    final formattedTime = localizations.formatTimeOfDay(timeOfDay, alwaysUse24HourFormat: use24Hour);
+
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF1F2937) : AppTheme.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: isDark ? AppTheme.gray700 : AppTheme.gray200,
           width: 1,
         ),
-        boxShadow: isDark
-            ? []
-            : [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.05),
-                  blurRadius: 10,
-                  offset: const Offset(0, 2),
-                ),
-              ],
       ),
       child: Row(
         children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: isTaken ? AppTheme.successBg : (isUpcoming ? AppTheme.blue50 : AppTheme.gray100),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(
-              isTaken ? AppIcons.check : AppIcons.alertCircle,
-              color: isTaken ? AppTheme.successText : (isUpcoming ? AppTheme.blue600 : AppTheme.gray500),
-              size: 24,
-            ),
+          Icon(
+            AppIcons.clock,
+            size: 20,
+            color: isDark ? AppTheme.gray400 : AppTheme.gray600,
           ),
-          const SizedBox(width: 16),
+          const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                  Text(
-                    medication.name,
-                    style: const TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
+                Row(
+                  children: [
+                    Flexible(
+                      child: Text(
+                        medication.name,
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          color: isDark ? AppTheme.white : AppTheme.gray900,
+                        ),
+                      ),
                     ),
+                    if (_isRecurring) ...[
+                      const SizedBox(width: 6),
+                      Icon(
+                        Icons.repeat,
+                        size: 14,
+                        color: isDark ? AppTheme.teal500 : AppTheme.teal600,
+                      ),
+                    ],
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '${medication.dosage} • $formattedTime',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: isDark
+                        ? AppTheme.white.withValues(alpha: 0.6)
+                        : AppTheme.gray600,
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    '${medication.dosage} • $timeStr',
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: isDark
-                          ? AppTheme.white.withValues(alpha: 0.6)
-                          : AppTheme.gray600,
-                    ),
-                  ),
+                ),
               ],
             ),
           ),
-          if (isTaken)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: AppTheme.successBg,
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: const Text(
-                'Taken',
-                style: TextStyle(
-                  color: AppTheme.successTextDark,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            )
-          else if (isUpcoming)
-            ElevatedButton(
-              onPressed: onMarkTaken,
-              style: ElevatedButton.styleFrom(
+          if (status != MedEventStatus.taken)
+            TextButton(
+              onPressed: () => _markAsTaken(context, ref),
+              style: TextButton.styleFrom(
                 backgroundColor: AppTheme.blue500,
-                foregroundColor: AppTheme.white,
+                foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(20),
+                  borderRadius: BorderRadius.circular(8),
                 ),
-                elevation: 0,
               ),
               child: const Text(
                 'Mark Taken',
                 style: TextStyle(fontSize: 12),
+              ),
+            ),
+          if (status == MedEventStatus.taken)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: Colors.green.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.green, width: 1),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.check_circle, size: 16, color: Colors.green),
+                  const SizedBox(width: 4),
+                  Text(
+                    'Taken',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.green,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
               ),
             ),
         ],

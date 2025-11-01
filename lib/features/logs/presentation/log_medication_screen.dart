@@ -6,6 +6,7 @@ import '../../../core/models/med_log.dart';
 import '../../medication/providers/medication_providers.dart';
 import '../providers/logs_providers.dart';
 import '../repository/logs_repository.dart';
+import '../../../utils/navigation_helper.dart';
 
 class LogMedicationScreen extends ConsumerWidget {
   final String medicationId;
@@ -14,9 +15,20 @@ class LogMedicationScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    
     return Scaffold(
       appBar: AppBar(
+        leading: IconButton(
+          icon: Icon(
+            Icons.arrow_back,
+            color: isDark ? Colors.white : Colors.black,
+          ),
+          onPressed: () => context.safePop(),
+        ),
         title: const Text('Log Medication'),
+        backgroundColor: isDark ? const Color(0xFF1F2937) : Colors.white,
       ),
       body: FutureBuilder<Medication?>(
         future: ref.read(medicationRepositoryProvider).getMedication(medicationId),
@@ -185,7 +197,8 @@ class LogMedicationScreen extends ConsumerWidget {
                     : Colors.red,
           ),
         );
-        context.pop();
+        // Navigate back safely
+        context.safePop();
       }
     } catch (e) {
       if (context.mounted) {
