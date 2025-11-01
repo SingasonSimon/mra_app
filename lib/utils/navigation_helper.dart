@@ -8,7 +8,12 @@ extension SafeNavigation on BuildContext {
     if (canPop()) {
       pop();
     } else {
-      go('/');
+      // If we can't pop and we're not on dashboard, go to dashboard
+      // Otherwise, do nothing (prevent app from closing)
+      final router = GoRouter.of(this);
+      if (router.routerDelegate.currentConfiguration.uri.path != '/') {
+        go('/');
+      }
     }
   }
 }

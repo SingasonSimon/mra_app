@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../auth/providers/auth_providers.dart';
@@ -56,6 +57,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
 
   @override
   void dispose() {
+    // Dispose controllers
     _nameController.dispose();
     _ageController.dispose();
     _emergencyContactController.dispose();
@@ -117,11 +119,19 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: theme.colorScheme.background,
       appBar: AppBar(
         backgroundColor: AppTheme.primary,
         foregroundColor: Colors.white,
+        systemOverlayStyle: const SystemUiOverlayStyle(
+          statusBarColor: AppTheme.teal500,
+          statusBarIconBrightness: Brightness.light,
+          statusBarBrightness: Brightness.dark,
+        ),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () => context.safePop(),
@@ -139,16 +149,28 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
             // Full Name
             TextFormField(
               controller: _nameController,
-              style: const TextStyle(color: Colors.black87, fontSize: 15),
+              style: TextStyle(
+                color: isDark ? AppTheme.white : Colors.black87,
+                fontSize: 15,
+              ),
               decoration: InputDecoration(
                 labelText: 'Full Name*',
-                labelStyle: TextStyle(color: Colors.grey[600], fontSize: 14),
-                prefixIcon: const Icon(Icons.person, color: Colors.grey),
+                labelStyle: TextStyle(
+                  color: isDark ? AppTheme.gray400 : AppTheme.gray600,
+                  fontSize: 14,
+                ),
+                prefixIcon: Icon(
+                  Icons.person,
+                  color: isDark ? AppTheme.gray400 : Colors.grey,
+                ),
                 filled: true,
-                fillColor: Colors.grey[100],
+                fillColor: isDark ? const Color(0xFF1F2937) : AppTheme.gray100,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide.none,
+                  borderSide: BorderSide(
+                    color: isDark ? AppTheme.gray700 : Colors.transparent,
+                    width: 1,
+                  ),
                 ),
                 contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
               ),
@@ -164,16 +186,28 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
             TextFormField(
               controller: _ageController,
               keyboardType: TextInputType.number,
-              style: const TextStyle(color: Colors.black87, fontSize: 15),
+              style: TextStyle(
+                color: isDark ? AppTheme.white : Colors.black87,
+                fontSize: 15,
+              ),
               decoration: InputDecoration(
                 labelText: 'Age (Optional)',
-                labelStyle: TextStyle(color: Colors.grey[600], fontSize: 14),
-                prefixIcon: const Icon(Icons.cake, color: Colors.grey),
+                labelStyle: TextStyle(
+                  color: isDark ? AppTheme.gray400 : AppTheme.gray600,
+                  fontSize: 14,
+                ),
+                prefixIcon: Icon(
+                  Icons.cake,
+                  color: isDark ? AppTheme.gray400 : Colors.grey,
+                ),
                 filled: true,
-                fillColor: Colors.grey[100],
+                fillColor: isDark ? const Color(0xFF1F2937) : AppTheme.gray100,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide.none,
+                  borderSide: BorderSide(
+                    color: isDark ? AppTheme.gray700 : Colors.transparent,
+                    width: 1,
+                  ),
                 ),
                 contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
               ),
@@ -182,24 +216,69 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
             // Gender
             DropdownButtonFormField<String>(
               value: _selectedGender,
-              style: const TextStyle(color: Colors.black87, fontSize: 15),
+              style: TextStyle(
+                color: isDark ? AppTheme.white : Colors.black87,
+                fontSize: 15,
+              ),
+              dropdownColor: isDark ? const Color(0xFF1F2937) : AppTheme.white,
               decoration: InputDecoration(
                 labelText: 'Gender (Optional)',
-                labelStyle: TextStyle(color: Colors.grey[600], fontSize: 14),
-                prefixIcon: const Icon(Icons.people, color: Colors.grey),
+                labelStyle: TextStyle(
+                  color: isDark ? AppTheme.gray400 : AppTheme.gray600,
+                  fontSize: 14,
+                ),
+                prefixIcon: Icon(
+                  Icons.people,
+                  color: isDark ? AppTheme.gray400 : Colors.grey,
+                ),
                 filled: true,
-                fillColor: Colors.grey[100],
+                fillColor: isDark ? const Color(0xFF1F2937) : AppTheme.gray100,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide.none,
+                  borderSide: BorderSide(
+                    color: isDark ? AppTheme.gray700 : Colors.transparent,
+                    width: 1,
+                  ),
                 ),
                 contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
               ),
-              items: const [
-                DropdownMenuItem(value: 'male', child: Text('Male')),
-                DropdownMenuItem(value: 'female', child: Text('Female')),
-                DropdownMenuItem(value: 'other', child: Text('Other')),
-                DropdownMenuItem(value: 'prefer_not_to_say', child: Text('Prefer not to say')),
+              items: [
+                DropdownMenuItem(
+                  value: 'male',
+                  child: Text(
+                    'Male',
+                    style: TextStyle(
+                      color: isDark ? AppTheme.white : Colors.black87,
+                    ),
+                  ),
+                ),
+                DropdownMenuItem(
+                  value: 'female',
+                  child: Text(
+                    'Female',
+                    style: TextStyle(
+                      color: isDark ? AppTheme.white : Colors.black87,
+                    ),
+                  ),
+                ),
+                DropdownMenuItem(
+                  value: 'other',
+                  child: Text(
+                    'Other',
+                    style: TextStyle(
+                      color: isDark ? AppTheme.white : Colors.black87,
+                    ),
+                  ),
+                ),
+                DropdownMenuItem(
+                  value: 'prefer_not_to_say',
+                  child: Text(
+                    'Prefer not to say',
+                    style: TextStyle(
+                      color: isDark ? AppTheme.white : Colors.black87,
+                    ),
+                  ),
+                ),
               ],
               onChanged: (value) {
                 setState(() => _selectedGender = value);
@@ -210,27 +289,40 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
             TextFormField(
               controller: _emergencyContactController,
               keyboardType: TextInputType.phone,
-              style: const TextStyle(color: Colors.black87, fontSize: 15),
+              style: TextStyle(
+                color: isDark ? AppTheme.white : Colors.black87,
+                fontSize: 15,
+              ),
               decoration: InputDecoration(
                 labelText: 'Emergency Contact (Optional)',
-                labelStyle: TextStyle(color: Colors.grey[600], fontSize: 14),
-                prefixIcon: const Icon(Icons.phone, color: Colors.grey),
+                labelStyle: TextStyle(
+                  color: isDark ? AppTheme.gray400 : AppTheme.gray600,
+                  fontSize: 14,
+                ),
+                prefixIcon: Icon(
+                  Icons.phone,
+                  color: isDark ? AppTheme.gray400 : Colors.grey,
+                ),
                 filled: true,
-                fillColor: Colors.grey[100],
+                fillColor: isDark ? const Color(0xFF1F2937) : AppTheme.gray100,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide.none,
+                  borderSide: BorderSide(
+                    color: isDark ? AppTheme.gray700 : Colors.transparent,
+                    width: 1,
+                  ),
                 ),
                 contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
               ),
             ),
             const SizedBox(height: 24),
             // Medical Conditions
-            const Text(
+            Text(
               'Medical Conditions',
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
+                color: isDark ? AppTheme.white : AppTheme.gray900,
               ),
             ),
             const SizedBox(height: 12),

@@ -1,19 +1,34 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../app/theme/app_theme.dart';
 import '../../../utils/navigation_helper.dart';
 
-class PrivacyDataScreen extends ConsumerWidget {
+class PrivacyDataScreen extends ConsumerStatefulWidget {
   const PrivacyDataScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<PrivacyDataScreen> createState() => _PrivacyDataScreenState();
+}
+
+class _PrivacyDataScreenState extends ConsumerState<PrivacyDataScreen> {
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    
     return Scaffold(
-      backgroundColor: Colors.grey[50],
+      backgroundColor: theme.colorScheme.background,
       appBar: AppBar(
         backgroundColor: AppTheme.primary,
         foregroundColor: Colors.white,
+        systemOverlayStyle: const SystemUiOverlayStyle(
+          statusBarColor: AppTheme.teal500,
+          statusBarIconBrightness: Brightness.light,
+          statusBarBrightness: Brightness.dark,
+        ),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () => context.safePop(),
@@ -32,24 +47,31 @@ class PrivacyDataScreen extends ConsumerWidget {
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: isDark ? const Color(0xFF1F2937) : AppTheme.white,
                 borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: isDark ? AppTheme.gray700 : AppTheme.gray200,
+                  width: 1,
+                ),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
+                  Text(
                     'Data Storage',
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
+                      color: isDark ? AppTheme.white : AppTheme.gray900,
                     ),
                   ),
                   const SizedBox(height: 12),
                   Text(
                     'Your data is securely stored in Firebase and encrypted. We use industry-standard security practices to protect your information.',
                     style: TextStyle(
-                      color: Colors.grey[700],
+                      color: isDark
+                          ? AppTheme.white.withValues(alpha: 0.7)
+                          : AppTheme.gray700,
                       fontSize: 14,
                     ),
                   ),
@@ -61,24 +83,31 @@ class PrivacyDataScreen extends ConsumerWidget {
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: isDark ? const Color(0xFF1F2937) : AppTheme.white,
                 borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: isDark ? AppTheme.gray700 : AppTheme.gray200,
+                  width: 1,
+                ),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
+                  Text(
                     'Data Usage',
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
+                      color: isDark ? AppTheme.white : AppTheme.gray900,
                     ),
                   ),
                   const SizedBox(height: 12),
                   Text(
                     'We use your medication and health data solely to provide reminders and track your adherence. We do not share your data with third parties.',
                     style: TextStyle(
-                      color: Colors.grey[700],
+                      color: isDark
+                          ? AppTheme.white.withValues(alpha: 0.7)
+                          : AppTheme.gray700,
                       fontSize: 14,
                     ),
                   ),
@@ -90,24 +119,31 @@ class PrivacyDataScreen extends ConsumerWidget {
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: isDark ? const Color(0xFF1F2937) : AppTheme.white,
                 borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: isDark ? AppTheme.gray700 : AppTheme.gray200,
+                  width: 1,
+                ),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
+                  Text(
                     'Export Your Data',
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
+                      color: isDark ? AppTheme.white : AppTheme.gray900,
                     ),
                   ),
                   const SizedBox(height: 12),
                   Text(
                     'You can export your medication logs and profile data at any time.',
                     style: TextStyle(
-                      color: Colors.grey[700],
+                      color: isDark
+                          ? AppTheme.white.withValues(alpha: 0.7)
+                          : AppTheme.gray700,
                       fontSize: 14,
                     ),
                   ),
@@ -130,9 +166,12 @@ class PrivacyDataScreen extends ConsumerWidget {
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: isDark ? const Color(0xFF1F2937) : AppTheme.white,
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: Colors.red[200]!),
+                border: Border.all(
+                  color: isDark ? Colors.red[700]! : Colors.red[200]!,
+                  width: 1,
+                ),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -149,7 +188,9 @@ class PrivacyDataScreen extends ConsumerWidget {
                   Text(
                     'Deleting your account will permanently remove all your data including medications, logs, and profile information. This action cannot be undone.',
                     style: TextStyle(
-                      color: Colors.grey[700],
+                      color: isDark
+                          ? AppTheme.white.withValues(alpha: 0.7)
+                          : AppTheme.gray700,
                       fontSize: 14,
                     ),
                   ),

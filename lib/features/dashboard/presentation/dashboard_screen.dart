@@ -55,12 +55,21 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> with SingleTi
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
-    return Scaffold(
-      backgroundColor: theme.colorScheme.background,
-      body: SafeArea(
-        bottom: false,
-        child: Column(
-          children: [
+    // Prevent back button from closing app when on dashboard
+    return PopScope(
+      canPop: false, // Prevent popping - this keeps the app open
+      onPopInvokedWithResult: (bool didPop, Object? result) {
+        // This callback is called when a pop is attempted
+        // Since canPop is false, the pop won't happen
+        // But we log it for debugging
+        debugPrint('Back button pressed on dashboard - prevented app closure');
+      },
+      child: Scaffold(
+        backgroundColor: theme.colorScheme.background,
+        body: SafeArea(
+          bottom: false,
+          child: Column(
+            children: [
             // Teal Header Section with Gradient
             Container(
               width: double.infinity,
@@ -110,7 +119,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> with SingleTi
                         ),
                         child: const Icon(
                           AppIcons.heart,
-                          color: AppTheme.white,
+                          color: Colors.red,
                           size: 24,
                         ),
                       ),
@@ -123,82 +132,82 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> with SingleTi
                     child: SlideTransition(
                       position: _slideAnimation,
                       child: Container(
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: AppTheme.white.withValues(alpha: 0.2),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: AppTheme.white.withValues(alpha: 0.2),
-                        width: 1,
-                      ),
-                    ),
-                    child: adherenceAsyncValue.when(
-                      data: (adherence) {
-                        return Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        padding: const EdgeInsets.all(20),
+                        decoration: BoxDecoration(
+                          color: AppTheme.white.withValues(alpha: 0.2),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: AppTheme.white.withValues(alpha: 0.2),
+                            width: 1,
+                          ),
+                        ),
+                        child: adherenceAsyncValue.when(
+                          data: (adherence) {
+                            return Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                const Text(
-                                  "Today's Adherence",
-                                  style: TextStyle(
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    const Text(
+                                      "Today's Adherence",
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                    Container(
+                                      padding: const EdgeInsets.all(8),
+                                      decoration: BoxDecoration(
+                                        color: AppTheme.white.withValues(alpha: 0.2),
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      child: const Icon(
+                                        AppIcons.trendingUp,
+                                        color: AppTheme.white,
+                                        size: 20,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 12),
+                                Text(
+                                  '${adherence.percentage}%',
+                                  style: const TextStyle(
                                     color: Colors.white,
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w600,
+                                    fontSize: 32,
+                                    fontWeight: FontWeight.bold,
                                   ),
                                 ),
-                                Container(
-                                  padding: const EdgeInsets.all(8),
-                                  decoration: BoxDecoration(
-                                    color: AppTheme.white.withValues(alpha: 0.2),
-                                    borderRadius: BorderRadius.circular(12),
+                                Text(
+                                  '${adherence.taken} of ${adherence.total} taken',
+                                  style: TextStyle(
+                                    color: Colors.white.withValues(alpha: 0.9),
+                                    fontSize: 13,
                                   ),
-                                  child: const Icon(
-                                    AppIcons.trendingUp,
-                                    color: AppTheme.white,
-                                    size: 20,
+                                ),
+                                const SizedBox(height: 12),
+                                ClipRRect(
+                                  borderRadius: BorderRadius.circular(4),
+                                  child: LinearProgressIndicator(
+                                    value: adherence.percentage / 100,
+                                    backgroundColor: Colors.white.withValues(alpha: 0.3),
+                                    valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
+                                    minHeight: 8,
                                   ),
                                 ),
                               ],
-                            ),
-                            const SizedBox(height: 12),
-                            Text(
-                              '${adherence.percentage}%',
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 32,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            Text(
-                              '${adherence.taken} of ${adherence.total} taken',
-                              style: TextStyle(
-                                color: Colors.white.withValues(alpha: 0.9),
-                                fontSize: 13,
-                              ),
-                            ),
-                            const SizedBox(height: 12),
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(4),
-                              child: LinearProgressIndicator(
-                                value: adherence.percentage / 100,
-                                backgroundColor: Colors.white.withValues(alpha: 0.3),
-                                valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
-                                minHeight: 8,
-                              ),
-                            ),
-                          ],
-                        );
-                      },
-                      loading: () => const Center(
-                        child: CircularProgressIndicator(color: Colors.white),
-                      ),
-                      error: (_, __) => const Text(
-                        'Error loading adherence',
-                        style: TextStyle(color: Colors.white),
-                      ),
-                    ),
+                            );
+                          },
+                          loading: () => const Center(
+                            child: CircularProgressIndicator(color: Colors.white),
+                          ),
+                          error: (_, __) => const Text(
+                            'Error loading adherence',
+                            style: TextStyle(color: Colors.white),
+                          ),
+                        ),
                       ),
                     ),
                   ),
@@ -397,6 +406,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> with SingleTi
         ),
       ),
       bottomNavigationBar: const BottomNavigation(currentIndex: 0),
+      ),
     );
   }
 

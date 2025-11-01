@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../auth/providers/auth_providers.dart';
@@ -6,18 +7,31 @@ import '../../../app/theme/app_theme.dart';
 import '../../../utils/navigation_helper.dart';
 import 'package:intl/intl.dart';
 
-class MedicalHistoryScreen extends ConsumerWidget {
+class MedicalHistoryScreen extends ConsumerStatefulWidget {
   const MedicalHistoryScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<MedicalHistoryScreen> createState() => _MedicalHistoryScreenState();
+}
+
+class _MedicalHistoryScreenState extends ConsumerState<MedicalHistoryScreen> {
+
+  @override
+  Widget build(BuildContext context) {
     final profileAsync = ref.watch(userProfileProvider);
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
 
     return Scaffold(
-      backgroundColor: Colors.grey[50],
+      backgroundColor: theme.colorScheme.background,
       appBar: AppBar(
         backgroundColor: AppTheme.primary,
         foregroundColor: Colors.white,
+        systemOverlayStyle: const SystemUiOverlayStyle(
+          statusBarColor: AppTheme.teal500,
+          statusBarIconBrightness: Brightness.light,
+          statusBarBrightness: Brightness.dark,
+        ),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () => context.safePop(),
@@ -36,24 +50,36 @@ class MedicalHistoryScreen extends ConsumerWidget {
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: isDark ? const Color(0xFF1F2937) : AppTheme.white,
                 borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: isDark ? AppTheme.gray700 : AppTheme.gray200,
+                  width: 1,
+                ),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
+                  Text(
                     'Profile Information',
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
+                      color: isDark ? AppTheme.white : AppTheme.gray900,
                     ),
                   ),
                   const SizedBox(height: 16),
                   profileAsync.when(
                     data: (profile) {
                       if (profile == null) {
-                        return const Text('No profile information available');
+                        return Text(
+                          'No profile information available',
+                          style: TextStyle(
+                            color: isDark
+                                ? AppTheme.white.withValues(alpha: 0.6)
+                                : AppTheme.gray600,
+                          ),
+                        );
                       }
                       return Column(
                         children: [
@@ -71,7 +97,14 @@ class MedicalHistoryScreen extends ConsumerWidget {
                       );
                     },
                     loading: () => const CircularProgressIndicator(),
-                    error: (_, __) => const Text('Error loading profile'),
+                    error: (_, __) => Text(
+                      'Error loading profile',
+                      style: TextStyle(
+                        color: isDark
+                            ? AppTheme.white.withValues(alpha: 0.6)
+                            : AppTheme.gray600,
+                      ),
+                    ),
                   ),
                 ],
               ),
@@ -81,17 +114,22 @@ class MedicalHistoryScreen extends ConsumerWidget {
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: isDark ? const Color(0xFF1F2937) : AppTheme.white,
                 borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: isDark ? AppTheme.gray700 : AppTheme.gray200,
+                  width: 1,
+                ),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
+                  Text(
                     'Medical Conditions',
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
+                      color: isDark ? AppTheme.white : AppTheme.gray900,
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -101,7 +139,9 @@ class MedicalHistoryScreen extends ConsumerWidget {
                         return Text(
                           'No conditions recorded',
                           style: TextStyle(
-                            color: Colors.grey[600],
+                            color: isDark
+                                ? AppTheme.white.withValues(alpha: 0.6)
+                                : AppTheme.gray600,
                             fontSize: 14,
                           ),
                         );
@@ -110,20 +150,21 @@ class MedicalHistoryScreen extends ConsumerWidget {
                         spacing: 8,
                         runSpacing: 8,
                         children: profile.conditions.map((condition) {
+                          final isTeal = condition.toLowerCase().contains('diabetes');
                           return Container(
                             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                             decoration: BoxDecoration(
-                              color: condition.toLowerCase().contains('diabetes')
-                                  ? Colors.green[50]
-                                  : Colors.blue[50],
+                              color: isTeal
+                                  ? AppTheme.successBg
+                                  : AppTheme.blue100,
                               borderRadius: BorderRadius.circular(20),
                             ),
                             child: Text(
                               condition,
                               style: TextStyle(
-                                color: condition.toLowerCase().contains('diabetes')
-                                    ? Colors.green[700]
-                                    : Colors.blue[700],
+                                color: isTeal
+                                    ? AppTheme.successText
+                                    : AppTheme.blue600,
                                 fontSize: 14,
                                 fontWeight: FontWeight.w500,
                               ),
@@ -133,7 +174,14 @@ class MedicalHistoryScreen extends ConsumerWidget {
                       );
                     },
                     loading: () => const CircularProgressIndicator(),
-                    error: (_, __) => const Text('Error loading conditions'),
+                    error: (_, __) => Text(
+                      'Error loading conditions',
+                      style: TextStyle(
+                        color: isDark
+                            ? AppTheme.white.withValues(alpha: 0.6)
+                            : AppTheme.gray600,
+                      ),
+                    ),
                   ),
                 ],
               ),
@@ -146,17 +194,22 @@ class MedicalHistoryScreen extends ConsumerWidget {
                 return Container(
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: isDark ? const Color(0xFF1F2937) : AppTheme.white,
                     borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: isDark ? AppTheme.gray700 : AppTheme.gray200,
+                      width: 1,
+                    ),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
+                      Text(
                         'Account Information',
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
+                          color: isDark ? AppTheme.white : AppTheme.gray900,
                         ),
                       ),
                       const SizedBox(height: 16),
@@ -189,6 +242,9 @@ class _InfoRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Row(
@@ -199,7 +255,9 @@ class _InfoRow extends StatelessWidget {
             child: Text(
               label,
               style: TextStyle(
-                color: Colors.grey[600],
+                color: isDark
+                    ? AppTheme.white.withValues(alpha: 0.6)
+                    : AppTheme.gray600,
                 fontSize: 14,
               ),
             ),
@@ -207,9 +265,10 @@ class _InfoRow extends StatelessWidget {
           Expanded(
             child: Text(
               value,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w500,
+                color: isDark ? AppTheme.white : AppTheme.gray900,
               ),
             ),
           ),

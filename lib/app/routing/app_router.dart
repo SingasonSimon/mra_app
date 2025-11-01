@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../features/auth/presentation/welcome_screen.dart';
@@ -27,6 +28,49 @@ import '../../features/profile/presentation/privacy_data_screen.dart';
 import '../../core/models/medication.dart';
 import '../../core/models/appointment.dart';
 import '../../core/services/notifications_service.dart';
+import '../../app/theme/app_theme.dart';
+
+/// Navigation observer that ensures system UI overlay style remains consistent
+class _SystemUIOverlayObserver extends NavigatorObserver {
+  void _setTealSystemUI() {
+    // Use post-frame callback to ensure it runs after route transition completes
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      SystemChrome.setSystemUIOverlayStyle(
+        const SystemUiOverlayStyle(
+          systemNavigationBarColor: AppTheme.teal500,
+          systemNavigationBarIconBrightness: Brightness.light,
+          statusBarColor: AppTheme.teal500,
+          statusBarIconBrightness: Brightness.light,
+          statusBarBrightness: Brightness.dark,
+        ),
+      );
+    });
+  }
+
+  @override
+  void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    super.didPush(route, previousRoute);
+    _setTealSystemUI();
+  }
+
+  @override
+  void didPop(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    super.didPop(route, previousRoute);
+    _setTealSystemUI();
+  }
+
+  @override
+  void didReplace({Route<dynamic>? newRoute, Route<dynamic>? oldRoute}) {
+    super.didReplace(newRoute: newRoute, oldRoute: oldRoute);
+    _setTealSystemUI();
+  }
+
+  @override
+  void didRemove(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    super.didRemove(route, previousRoute);
+    _setTealSystemUI();
+  }
+}
 
 class SplashScreen extends ConsumerWidget {
   const SplashScreen({super.key});
@@ -102,6 +146,13 @@ CustomTransitionPage<T> _buildPageWithDefaultTransition<T>(
 final GoRouter appRouter = GoRouter(
   initialLocation: '/splash',
   navigatorKey: NotificationsService.navigatorKey,
+  redirect: (context, state) {
+    // Prevent navigation issues
+    return null;
+  },
+  observers: [
+    _SystemUIOverlayObserver(),
+  ],
   routes: <RouteBase>[
     GoRoute(
       path: '/splash',

@@ -9,6 +9,7 @@ import '../../../utils/navigation_helper.dart';
 import '../../logs/providers/logs_providers.dart';
 import '../../logs/repository/logs_repository.dart';
 import '../providers/medication_providers.dart';
+import '../../dashboard/providers/dashboard_providers.dart';
 
 class MedicationDetailsScreen extends ConsumerStatefulWidget {
   final Medication medication;
@@ -54,6 +55,11 @@ class _MedicationDetailsScreenState
       );
 
       await logsRepo.logMedicationEvent(log);
+
+      // Invalidate dashboard providers to refresh the UI
+      ref.invalidate(todayMedicationsProvider);
+      ref.invalidate(todayAdherenceProvider);
+      ref.invalidate(nextDoseProvider);
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -105,6 +111,11 @@ class _MedicationDetailsScreenState
       );
 
       await logsRepo.logMedicationEvent(log);
+
+      // Invalidate dashboard providers to refresh the UI
+      ref.invalidate(todayMedicationsProvider);
+      ref.invalidate(todayAdherenceProvider);
+      ref.invalidate(nextDoseProvider);
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -159,6 +170,11 @@ class _MedicationDetailsScreenState
 
         await logsRepo.logMedicationEvent(log);
       }
+
+      // Invalidate dashboard providers to refresh the UI
+      ref.invalidate(todayMedicationsProvider);
+      ref.invalidate(todayAdherenceProvider);
+      ref.invalidate(nextDoseProvider);
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

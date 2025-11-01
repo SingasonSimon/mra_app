@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'app/app_bootstrap.dart';
@@ -32,8 +33,19 @@ class MraApp extends ConsumerWidget {
     final lightTheme = baseLightTheme;
     final darkTheme = baseDarkTheme;
 
+    // Set system UI overlay style globally - use teal color for status bar and navigation bar
+    SystemChrome.setSystemUIOverlayStyle(
+      const SystemUiOverlayStyle(
+        systemNavigationBarColor: AppTheme.teal500,
+        systemNavigationBarIconBrightness: Brightness.light,
+        statusBarColor: AppTheme.teal500, // Teal background for status bar (time, battery, wifi icons)
+        statusBarIconBrightness: Brightness.light, // Light icons for visibility on teal
+        statusBarBrightness: Brightness.dark, // For iOS
+      ),
+    );
+
     return MaterialApp.router(
-      title: 'MRA APP',
+      title: 'MRA',
       debugShowCheckedModeBanner: false,
       theme: lightTheme,
       darkTheme: darkTheme,
@@ -41,16 +53,25 @@ class MraApp extends ConsumerWidget {
       routerConfig: router,
       locale: locale,
       builder: (context, child) {
-        return AnimatedTheme(
-          data: Theme.of(context),
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeInOut,
-          child: MediaQuery(
-            data: MediaQuery.of(context).copyWith(
-              textScaler: TextScaler.linear(largeTextMode ? 1.3 : 1.0),
-            ),
-            child: ScaffoldMessenger(
-            child: child!,
+        return AnnotatedRegion<SystemUiOverlayStyle>(
+          value: const SystemUiOverlayStyle(
+            systemNavigationBarColor: AppTheme.teal500,
+            systemNavigationBarIconBrightness: Brightness.light,
+            statusBarColor: AppTheme.teal500,
+            statusBarIconBrightness: Brightness.light,
+            statusBarBrightness: Brightness.dark,
+          ),
+          child: AnimatedTheme(
+            data: Theme.of(context),
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeInOut,
+            child: MediaQuery(
+              data: MediaQuery.of(context).copyWith(
+                textScaler: TextScaler.linear(largeTextMode ? 1.3 : 1.0),
+              ),
+              child: ScaffoldMessenger(
+              child: child!,
+              ),
             ),
           ),
         );

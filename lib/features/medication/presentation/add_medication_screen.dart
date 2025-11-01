@@ -243,7 +243,11 @@ class _AddMedicationScreenState extends ConsumerState<AddMedicationScreen> {
   }
 
   Future<void> _saveMedication() async {
-    if (_isSaving) return;
+    // Prevent multiple simultaneous saves
+    if (_isSaving) {
+      debugPrint('Save already in progress, ignoring duplicate call');
+      return;
+    }
 
     if (!_formKey.currentState!.validate()) return;
     if (_selectedTimes.isEmpty) {
@@ -268,6 +272,7 @@ class _AddMedicationScreenState extends ConsumerState<AddMedicationScreen> {
     }
 
     setState(() => _isSaving = true);
+    debugPrint('Saving medication: ${_nameController.text.trim()} with ${_selectedTimes.length} scheduled times');
 
     try {
       final repository = ref.read(medicationRepositoryProvider);
@@ -334,7 +339,10 @@ class _AddMedicationScreenState extends ConsumerState<AddMedicationScreen> {
           medicationId.hashCode + 10000,
         );
       } else {
+        // Only save ONE medication with all scheduled times
+        debugPrint('Adding medication with ${finalMedication.timesPerDay.length} scheduled times: ${finalMedication.timesPerDay.map((t) => '${t.hour}:${t.minute}').join(', ')}');
         medicationId = await repository.addMedication(finalMedication);
+        debugPrint('Medication saved with ID: $medicationId');
       }
 
       // Schedule notifications if enabled (errors are handled internally)

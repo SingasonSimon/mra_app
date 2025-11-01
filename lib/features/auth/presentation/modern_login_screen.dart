@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import '../providers/auth_providers.dart';
 import '../../../app/theme/app_theme.dart';
 
@@ -9,6 +10,27 @@ class ModernLoginScreen extends ConsumerStatefulWidget {
 
   @override
   ConsumerState<ModernLoginScreen> createState() => _ModernLoginScreenState();
+}
+
+// Google Icon Widget using official SVG
+class _GoogleIcon extends StatelessWidget {
+  const _GoogleIcon({this.size = 20.0});
+
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: size,
+      height: size,
+      child: SvgPicture.asset(
+        'assets/images/google_logo.svg',
+        width: size,
+        height: size,
+        fit: BoxFit.contain,
+      ),
+    );
+  }
 }
 
 class _ModernLoginScreenState extends ConsumerState<ModernLoginScreen> {
@@ -119,10 +141,10 @@ class _ModernLoginScreenState extends ConsumerState<ModernLoginScreen> {
                     style: const TextStyle(color: Colors.black87),
                     decoration: InputDecoration(
                       labelText: 'Email',
-                      hintText: 'Email',
-                      hintStyle: TextStyle(color: Colors.grey[400]),
-                      labelStyle: TextStyle(color: Colors.grey[600]),
-                      prefixIcon: const Icon(Icons.email_outlined, color: Colors.grey),
+                      hintText: 'Enter your email',
+                      hintStyle: const TextStyle(color: AppTheme.gray600),
+                      labelStyle: const TextStyle(color: AppTheme.gray600),
+                      prefixIcon: const Icon(Icons.email_outlined, color: AppTheme.gray500),
                       filled: true,
                       fillColor: Colors.white,
                       border: OutlineInputBorder(
@@ -149,16 +171,16 @@ class _ModernLoginScreenState extends ConsumerState<ModernLoginScreen> {
                     style: const TextStyle(color: Colors.black87),
                     decoration: InputDecoration(
                       labelText: 'Password',
-                      hintText: 'Password',
-                      hintStyle: TextStyle(color: Colors.grey[400]),
-                      labelStyle: TextStyle(color: Colors.grey[600]),
-                      prefixIcon: const Icon(Icons.lock_outline, color: Colors.grey),
+                      hintText: 'Enter your password',
+                      hintStyle: const TextStyle(color: AppTheme.gray600),
+                      labelStyle: const TextStyle(color: AppTheme.gray600),
+                      prefixIcon: const Icon(Icons.lock_outline, color: AppTheme.gray500),
                       suffixIcon: IconButton(
                         icon: Icon(
                           _obscurePassword
                               ? Icons.visibility_outlined
                               : Icons.visibility_off_outlined,
-                          color: Colors.grey,
+                          color: AppTheme.gray500,
                         ),
                         onPressed: () {
                           setState(() => _obscurePassword = !_obscurePassword);
@@ -302,19 +324,7 @@ class _ModernLoginScreenState extends ConsumerState<ModernLoginScreen> {
                     width: double.infinity,
                     child: OutlinedButton.icon(
                       onPressed: _isLoading ? null : _handleGoogleSignIn,
-                      icon: Container(
-                        width: 20,
-                        height: 20,
-                        alignment: Alignment.center,
-                        child: const Text(
-                          'G',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 18,
-                            color: Color(0xFF4285F4),
-                          ),
-                        ),
-                      ),
+                      icon: const _GoogleIcon(size: 20),
                       label: const Text(
                         'Google',
                         style: TextStyle(

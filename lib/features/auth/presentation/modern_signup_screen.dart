@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import '../../../utils/navigation_helper.dart';
 import '../providers/auth_providers.dart';
 import '../../../app/theme/app_theme.dart';
@@ -10,6 +11,27 @@ class ModernSignUpScreen extends ConsumerStatefulWidget {
 
   @override
   ConsumerState<ModernSignUpScreen> createState() => _ModernSignUpScreenState();
+}
+
+// Google Icon Widget using official SVG
+class _GoogleIcon extends StatelessWidget {
+  const _GoogleIcon({this.size = 20.0});
+
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: size,
+      height: size,
+      child: SvgPicture.asset(
+        'assets/images/google_logo.svg',
+        width: size,
+        height: size,
+        fit: BoxFit.contain,
+      ),
+    );
+  }
 }
 
 class _ModernSignUpScreenState extends ConsumerState<ModernSignUpScreen> {
@@ -329,18 +351,7 @@ class _ModernSignUpScreenState extends ConsumerState<ModernSignUpScreen> {
                     width: double.infinity,
                     child: OutlinedButton.icon(
                       onPressed: _isLoading ? null : _handleGoogleSignIn,
-                      icon: Container(
-                        width: 20,
-                        height: 20,
-                        child: const Text(
-                          'G',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 18,
-                            color: Color(0xFF4285F4),
-                          ),
-                        ),
-                      ),
+                      icon: const _GoogleIcon(size: 20),
                       label: const Text(
                         'Google',
                         style: TextStyle(

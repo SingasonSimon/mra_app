@@ -76,12 +76,13 @@ class NotificationsService {
     }
 
     const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
+    // iOS notification settings
     const iosSettings = DarwinInitializationSettings(
       requestAlertPermission: true,
       requestBadgePermission: true,
       requestSoundPermission: true,
     );
-    const initSettings = InitializationSettings(
+    final initSettings = InitializationSettings(
       android: androidSettings,
       iOS: iosSettings,
     );
@@ -115,45 +116,82 @@ class NotificationsService {
   void _onNotificationTapped(NotificationResponse response) async {
     final actionId = response.actionId;
     final payload = response.payload;
+    final notificationId = response.id;
     
-    debugPrint('Notification tapped - actionId: $actionId, payload: $payload');
+    debugPrint('=== Notification Response ===');
+    debugPrint('Action ID: $actionId');
+    debugPrint('Payload: $payload');
+    debugPrint('Notification ID: $notificationId');
+    debugPrint('Input: ${response.input}');
     
-    if (payload == null || payload.isEmpty) return;
-    
-    // Payload format: medicationId (no action suffix for body tap)
-    final medicationId = payload.split('|')[0];
-    
-    if (actionId == null) {
-      // Notification body tapped - navigate to log medication screen
-      final context = navigatorKey?.currentContext;
-      if (context != null) {
-        GoRouter.of(context).go('/logs/$medicationId');
+    // Handle notification tap (body tap) - navigate to medication details
+    if (actionId == null || actionId.isEmpty) {
+      debugPrint('Notification body tapped');
+      if (payload != null && payload.isNotEmpty) {
+        final medicationId = payload.trim();
+        debugPrint('Navigating to medication details: $medicationId');
+        final context = navigatorKey?.currentContext;
+        if (context != null) {
+          try {
+            GoRouter.of(context).go('/medications/$medicationId/details');
+          } catch (e) {
+            debugPrint('Error navigating to medication details: $e');
+          }
+        } else {
+          debugPrint('Navigator context is null, cannot navigate');
+        }
       }
       return;
     }
     
-    // Action button tapped
-    MedEventStatus? status;
-    if (actionId == 'take') {
-      status = MedEventStatus.taken;
-    } else if (actionId == 'skip') {
-      status = MedEventStatus.skipped;
-    } else if (actionId == 'snooze') {
-      status = MedEventStatus.snoozed;
+    // Handle action button tap
+    debugPrint('Action button tapped: $actionId');
+    
+    if (payload == null || payload.isEmpty) {
+      debugPrint('Warning: Action button tapped but payload is empty');
+      return;
     }
     
-    if (status == null) return;
+    // Payload is just the medicationId
+    final medicationId = payload.trim();
+    debugPrint('Processing action for medication: $medicationId');
+    
+    // Map action IDs to status
+    MedEventStatus? status;
+    switch (actionId) {
+      case 'take':
+        status = MedEventStatus.taken;
+        break;
+      case 'skip':
+        status = MedEventStatus.skipped;
+        break;
+      case 'snooze':
+        status = MedEventStatus.snoozed;
+        break;
+      default:
+        debugPrint('Unknown action ID: $actionId');
+        return;
+    }
+    
+    if (status == null) {
+      debugPrint('Could not determine status for action: $actionId');
+      return;
+    }
+    
+    debugPrint('Processing medication event: ${status.name}');
     
     try {
       // Get medication to determine scheduled time
       final medication = await _medicationRepository.getMedication(medicationId);
       if (medication == null) {
-        debugPrint('Medication not found: $medicationId');
+        debugPrint('Error: Medication not found: $medicationId');
         return;
       }
       
+      debugPrint('Found medication: ${medication.name}');
+      
       final now = DateTime.now();
-      // Find closest scheduled time for today
+      // Find closest scheduled time for today (within 30 minutes window)
       TimeOfDay? scheduledTime;
       final currentTimeOfDay = TimeOfDay.fromDateTime(now);
       
@@ -161,8 +199,10 @@ class NotificationsService {
         final timeMinutes = time.hour * 60 + time.minute;
         final currentMinutes = currentTimeOfDay.hour * 60 + currentTimeOfDay.minute;
         
+        // Match if within 30 minutes window (before or after)
         if (timeMinutes >= currentMinutes - 30 && timeMinutes <= currentMinutes + 30) {
           scheduledTime = time;
+          debugPrint('Matched scheduled time: ${time.hour}:${time.minute.toString().padLeft(2, '0')}');
           break;
         }
       }
@@ -170,11 +210,14 @@ class NotificationsService {
       if (scheduledTime == null && medication.timesPerDay.isNotEmpty) {
         // Use the first scheduled time if no match found
         scheduledTime = medication.timesPerDay.first;
+        debugPrint('No time match found, using first scheduled time: ${scheduledTime.hour}:${scheduledTime.minute.toString().padLeft(2, '0')}');
       }
       
       final scheduledDateTime = scheduledTime != null
           ? DateTime(now.year, now.month, now.day, scheduledTime.hour, scheduledTime.minute)
           : now;
+      
+      debugPrint('Creating log entry: scheduled=${scheduledDateTime.toString()}, status=${status.name}');
       
       // Log the medication event
       final log = MedLog(
@@ -186,28 +229,52 @@ class NotificationsService {
       );
       
       await _logsRepository.logMedicationEvent(log);
-      debugPrint('Logged medication event: $medicationId - ${status.name}');
+      debugPrint('✓ Successfully logged medication event: $medicationId - ${status.name}');
+      
+      // Cancel the notification for "take" and "skip" actions
+      if (status == MedEventStatus.taken || status == MedEventStatus.skipped) {
+        if (notificationId != null) {
+          await _notifications.cancel(notificationId);
+          debugPrint('✓ Cancelled notification: $notificationId');
+        }
+      }
       
       // If snoozed, reschedule notification for 15 minutes later
       if (status == MedEventStatus.snoozed) {
         final snoozeTime = now.add(const Duration(minutes: 15));
+        debugPrint('Snoozing notification, rescheduling for: ${snoozeTime.toString()}');
         await scheduleMedicationReminder(
-          id: medicationId.hashCode,
+          id: medicationId.hashCode + DateTime.now().millisecondsSinceEpoch,
           title: 'Medication Reminder',
           body: 'Time to take ${medication.name} (${medication.dosage})',
           scheduledTime: snoozeTime,
           medicationId: medicationId,
           useRecurring: false,
         );
-        debugPrint('Rescheduled notification for 15 minutes later');
+        debugPrint('✓ Rescheduled notification for 15 minutes later');
       }
       
-      // Navigate to log screen to show confirmation
-      if (navigatorKey?.currentContext != null) {
-        navigatorKey!.currentContext!.go('/logs/$medicationId');
+      // Navigate to medication details screen to show confirmation
+      final context = navigatorKey?.currentContext;
+      if (context != null) {
+        try {
+          debugPrint('Navigating to medication details for confirmation');
+          GoRouter.of(context).go('/medications/$medicationId/details');
+        } catch (e) {
+          debugPrint('Error navigating after action: $e');
+          // Try alternative navigation
+          try {
+            GoRouter.of(context).go('/logs/$medicationId');
+          } catch (e2) {
+            debugPrint('Error with alternative navigation: $e2');
+          }
+        }
+      } else {
+        debugPrint('Navigator context is null, cannot navigate');
       }
-    } catch (e) {
-      debugPrint('Error handling notification action: $e');
+    } catch (e, stackTrace) {
+      debugPrint('✗ Error handling notification action: $e');
+      debugPrint('Stack trace: $stackTrace');
     }
   }
 
@@ -238,10 +305,25 @@ class NotificationsService {
       sound: playSound ? const RawResourceAndroidNotificationSound('alarm') : null, // Custom alarm sound (10-15 seconds) or null if sound disabled
       ongoing: false, // Not ongoing - allows dismissal
       autoCancel: false, // Don't auto-cancel so user can interact with it
-      actions: const [
-        AndroidNotificationAction('take', 'Take', showsUserInterface: false),
-        AndroidNotificationAction('snooze', 'Snooze', showsUserInterface: false),
-        AndroidNotificationAction('skip', 'Skip', showsUserInterface: false),
+      actions: <AndroidNotificationAction>[
+        AndroidNotificationAction(
+          'take',
+          'Take',
+          showsUserInterface: false,
+          cancelNotification: true, // Cancel notification when taken
+        ),
+        AndroidNotificationAction(
+          'snooze',
+          'Snooze',
+          showsUserInterface: false,
+          cancelNotification: false, // Keep notification for snooze
+        ),
+        AndroidNotificationAction(
+          'skip',
+          'Skip',
+          showsUserInterface: false,
+          cancelNotification: true, // Cancel notification when skipped
+        ),
       ],
     );
 

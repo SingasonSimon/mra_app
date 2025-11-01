@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class AppTheme {
@@ -112,6 +113,11 @@ class AppTheme {
         elevation: 0,
         backgroundColor: teal500,
         foregroundColor: white,
+        systemOverlayStyle: const SystemUiOverlayStyle(
+          statusBarColor: teal500,
+          statusBarIconBrightness: Brightness.light,
+          statusBarBrightness: Brightness.dark,
+        ),
         titleTextStyle: textTheme.titleLarge?.copyWith(
           color: white,
           fontWeight: FontWeight.bold,
@@ -235,6 +241,11 @@ class AppTheme {
         elevation: 0,
         backgroundColor: const Color(0xFF1F2937), // gray-800
         foregroundColor: white,
+        systemOverlayStyle: const SystemUiOverlayStyle(
+          statusBarColor: teal500,
+          statusBarIconBrightness: Brightness.light,
+          statusBarBrightness: Brightness.dark,
+        ),
         titleTextStyle: textTheme.titleLarge?.copyWith(
           color: white,
           fontWeight: FontWeight.bold,
