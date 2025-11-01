@@ -30,17 +30,17 @@ class DashboardScreen extends ConsumerWidget {
     final todayMedsAsync = ref.watch(todayMedicationsProvider);
 
     return Scaffold(
-      backgroundColor: Colors.grey[50],
+      backgroundColor: AppTheme.gray50,
       body: SafeArea(
         bottom: false,
         child: Column(
           children: [
-            // Green Header Section
+            // Teal Header Section with Gradient
             Container(
               width: double.infinity,
               padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
               decoration: const BoxDecoration(
-                color: AppTheme.primary,
+                gradient: AppTheme.tealGradient,
                 borderRadius: BorderRadius.only(
                   bottomLeft: Radius.circular(24),
                   bottomRight: Radius.circular(24),
@@ -79,13 +79,13 @@ class DashboardScreen extends ConsumerWidget {
                         width: 48,
                         height: 48,
                         decoration: BoxDecoration(
-                          color: Colors.amber[400],
+                          color: AppTheme.teal100,
                           shape: BoxShape.circle,
                         ),
                         child: const Icon(
-                          Icons.waving_hand,
-                          color: Colors.white,
-                          size: 28,
+                          AppIcons.heart,
+                          color: AppTheme.white,
+                          size: 24,
                         ),
                       ),
                     ],
@@ -95,8 +95,12 @@ class DashboardScreen extends ConsumerWidget {
                   Container(
                     padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
-                      color: AppTheme.primaryLight,
+                      color: AppTheme.white.withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: AppTheme.white.withValues(alpha: 0.2),
+                        width: 1,
+                      ),
                     ),
                     child: adherenceAsyncValue.when(
                       data: (adherence) {
@@ -114,10 +118,17 @@ class DashboardScreen extends ConsumerWidget {
                                     fontWeight: FontWeight.w600,
                                   ),
                                 ),
-                                const Icon(
-                                  Icons.local_fire_department,
-                                  color: Colors.orange,
-                                  size: 24,
+                                Container(
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    color: AppTheme.white.withValues(alpha: 0.2),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: const Icon(
+                                    AppIcons.trendingUp,
+                                    color: AppTheme.white,
+                                    size: 20,
+                                  ),
                                 ),
                               ],
                             ),
