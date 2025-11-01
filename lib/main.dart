@@ -49,7 +49,7 @@ class MraApp extends ConsumerWidget {
               textScaler: TextScaler.linear(largeTextMode ? 1.3 : 1.0),
             ),
             child: ScaffoldMessenger(
-              child: child!,
+            child: child!,
             ),
           ),
         );

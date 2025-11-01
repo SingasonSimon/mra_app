@@ -1152,15 +1152,15 @@ class _AddMedicationScreenState extends ConsumerState<AddMedicationScreen> {
                                               _existingPrescriptionImageUrl = null;
                                               _prescriptionImage = null;
                                             });
-                                          },
-                                          style: IconButton.styleFrom(
-                                            backgroundColor: Colors.black54,
-                                          ),
-                                        ),
+                                      },
+                                      style: IconButton.styleFrom(
+                                        backgroundColor: Colors.black54,
                                       ),
-                                    ],
-                                  )
-                                : Column(
+                                    ),
+                                  ),
+                                ],
+                              )
+                            : Column(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
                                   Icon(

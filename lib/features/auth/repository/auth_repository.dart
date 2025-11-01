@@ -7,8 +7,17 @@ class AuthRepository {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   
-  // GoogleSignIn instance - use singleton pattern
-  GoogleSignIn get _googleSignIn => GoogleSignIn.instance;
+  // GoogleSignIn instance with serverClientId for Android
+  // The serverClientId is the Web Client ID from Firebase Console
+  // Get it from: Firebase Console > Authentication > Sign-in method > Google > Web Client ID
+  // For Android, you need the Web application OAuth 2.0 Client ID, not the Android client ID
+  late final GoogleSignIn _googleSignIn = GoogleSignIn(
+    // Use Web Client ID from Firebase Console > Authentication > Sign-in method > Google
+    // This is different from the Android client ID in google-services.json
+    // If you haven't created a Web app, create one and get its OAuth 2.0 Client ID
+    serverClientId: '746414767673-gbhe98fnqr2qg664o8iiqjm6m2aosdao.apps.googleusercontent.com',
+    scopes: ['email', 'profile'],
+  );
 
   Stream<User?> get authStateChanges => _auth.authStateChanges();
 
@@ -51,17 +60,27 @@ class AuthRepository {
 
   Future<UserCredential> signInWithGoogle() async {
     try {
-      // Trigger the authentication flow using authenticate() for v7.2.0
-      final GoogleSignInAccount googleUser = await _googleSignIn.authenticate();
+      // Trigger the authentication flow
+      // For v7.2.0+, use signIn() instead of authenticate()
+      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
       
+      if (googleUser == null) {
+        // User cancelled the sign-in
+        throw Exception('Google sign in was cancelled');
+      }
+
       // Obtain the auth details from the request
       final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
       
+      if (googleAuth.idToken == null) {
+        throw Exception('Failed to get ID token from Google');
+      }
+      
       // Create a new credential
-      // Note: In v7.2.0, GoogleSignInAuthentication only has idToken, no accessToken
-      // Firebase Auth can work with just idToken for Google Sign-In
+      // For Android with Firebase Auth, idToken is required, accessToken is optional
       final credential = GoogleAuthProvider.credential(
         idToken: googleAuth.idToken,
+        accessToken: googleAuth.accessToken, // May be null on Android, that's OK
       );
 
       // Once signed in, return the UserCredential

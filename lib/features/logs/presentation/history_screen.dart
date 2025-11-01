@@ -9,7 +9,7 @@ import '../../../widgets/bottom_navigation.dart';
 import '../../../app/theme/app_theme.dart';
 import '../../medication/providers/medication_providers.dart';
 import '../../../utils/navigation_helper.dart';
-import 'dart:math' as math;
+import '../../../core/models/medication.dart';
 
 class HistoryScreen extends ConsumerStatefulWidget {
   const HistoryScreen({super.key});
@@ -18,22 +18,7 @@ class HistoryScreen extends ConsumerStatefulWidget {
   ConsumerState<HistoryScreen> createState() => _HistoryScreenState();
 }
 
-class _HistoryScreenState extends ConsumerState<HistoryScreen> with SingleTickerProviderStateMixin {
-  late TabController _tabController;
-  String _selectedPeriod = 'This Week';
-
-  @override
-  void initState() {
-    super.initState();
-    _tabController = TabController(length: 3, vsync: this);
-  }
-
-  @override
-  void dispose() {
-    _tabController.dispose();
-    super.dispose();
-  }
-
+class _HistoryScreenState extends ConsumerState<HistoryScreen> {
   @override
   Widget build(BuildContext context) {
     final now = DateTime.now();
@@ -41,16 +26,16 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> with SingleTicker
     final medicationsAsync = ref.watch(medicationsStreamProvider);
 
     // Calculate 7-day adherence based on expected vs taken doses
-    final adherenceData = logsAsync.maybeWhen(
-      data: (logs) => medicationsAsync.maybeWhen(
+    final adherenceData = logsAsync.when(
+      data: (logs) => medicationsAsync.when(
         data: (medications) {
-          final now = DateTime.now();
-          final weekAgo = now.subtract(const Duration(days: 7));
+          final currentNow = DateTime.now();
+          final weekAgo = currentNow.subtract(const Duration(days: 7));
           
           // Get active medications
           final activeMeds = medications.where((med) {
-            if (med.startDate.isAfter(now)) return false;
-            if (med.endDate != null && med.endDate!.isBefore(now)) return false;
+            if (med.startDate.isAfter(currentNow)) return false;
+            if (med.endDate != null && med.endDate!.isBefore(currentNow)) return false;
             return true;
           }).toList();
           
@@ -59,12 +44,12 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> with SingleTicker
           for (final med in activeMeds) {
             for (int day = 0; day < 7; day++) {
               final date = weekAgo.add(Duration(days: day));
-              // Check if medication is active on this date
-              if (med.startDate.isBefore(date) || med.startDate.isAtSameMomentAs(date)) {
-                if (med.endDate == null || med.endDate!.isAfter(date) || med.endDate!.isAtSameMomentAs(date)) {
+              final dayStart = DateTime(date.year, date.month, date.day);
+              final dayEnd = dayStart.add(const Duration(days: 1));
+
+              if (med.startDate.isBefore(dayEnd) && (med.endDate == null || med.endDate!.isAfter(dayStart))) {
                   expectedDoses += med.timesPerDay.length;
                 }
-              }
             }
           }
           
@@ -76,9 +61,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> with SingleTicker
               final dayStart = DateTime(date.year, date.month, date.day);
               final dayEnd = dayStart.add(const Duration(days: 1));
               
-              // Check if medication is active on this date
               if (med.startDate.isBefore(dayEnd) && (med.endDate == null || med.endDate!.isAfter(dayStart))) {
-                // For each scheduled time, check if there's a taken log
                 for (final scheduledTime in med.timesPerDay) {
                   final scheduledDateTime = DateTime(
                     date.year,
@@ -88,7 +71,6 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> with SingleTicker
                     scheduledTime.minute,
                   );
                   
-                  // Check if there's a log for this scheduled time
                   final hasLog = logs.any((log) =>
                       log.medicationId == med.id &&
                       log.status == MedEventStatus.taken &&
@@ -108,14 +90,6 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> with SingleTicker
             }
           }
           
-          // Fallback: if matching didn't work, use simple count (less accurate)
-          if (takenDoses == 0) {
-            takenDoses = logs.where((log) => 
-              log.timestamp.isAfter(weekAgo) && 
-              log.status == MedEventStatus.taken
-            ).length;
-          }
-          
           final percentage = expectedDoses > 0 ? (takenDoses / expectedDoses * 100).round() : 0;
           
           // Calculate last week for comparison
@@ -124,14 +98,14 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> with SingleTicker
           for (final med in activeMeds) {
             for (int day = 0; day < 7; day++) {
               final date = twoWeeksAgo.add(Duration(days: day));
-              if (med.startDate.isBefore(date) || med.startDate.isAtSameMomentAs(date)) {
-                if (med.endDate == null || med.endDate!.isAfter(date) || med.endDate!.isAtSameMomentAs(date)) {
-                  lastWeekExpected += med.timesPerDay.length.toInt();
-                }
+              final dayStart = DateTime(date.year, date.month, date.day);
+              final dayEnd = dayStart.add(const Duration(days: 1));
+
+              if (med.startDate.isBefore(dayEnd) && (med.endDate == null || med.endDate!.isAfter(dayStart))) {
+                lastWeekExpected += med.timesPerDay.length;
               }
             }
           }
-          // Calculate last week taken doses with proper matching
           int lastWeekTaken = 0;
           for (final med in activeMeds) {
             for (int day = 0; day < 7; day++) {
@@ -167,33 +141,35 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> with SingleTicker
               }
             }
           }
-          
-          // Fallback
-          if (lastWeekTaken == 0) {
-            lastWeekTaken = logs.where((log) => 
-              log.timestamp.isAfter(twoWeeksAgo) && 
-              log.timestamp.isBefore(weekAgo) &&
-              log.status == MedEventStatus.taken
-            ).length;
-          }
           final lastWeekPercentage = lastWeekExpected > 0 ? (lastWeekTaken / lastWeekExpected * 100).round() : 0;
           
-          return {'percentage': percentage, 'lastWeek': lastWeekPercentage};
+          return {
+            'percentage': percentage,
+            'lastWeek': lastWeekPercentage,
+            'taken': takenDoses,
+            'expected': expectedDoses,
+          };
         },
-        orElse: () => {'percentage': 0, 'lastWeek': 0},
+        loading: () => {'percentage': 0, 'lastWeek': 0, 'taken': 0, 'expected': 0},
+        error: (error, stack) {
+          debugPrint('Error loading medications for adherence: $error');
+          return {'percentage': 0, 'lastWeek': 0, 'taken': 0, 'expected': 0};
+        },
       ),
-      orElse: () => {'percentage': 0, 'lastWeek': 0},
+      loading: () => {'percentage': 0, 'lastWeek': 0, 'taken': 0, 'expected': 0},
+      error: (error, stack) {
+        debugPrint('Error loading logs for adherence: $error');
+        return {'percentage': 0, 'lastWeek': 0, 'taken': 0, 'expected': 0};
+      },
     );
 
     // Calculate current streak - consecutive days with at least one taken dose
-    final streakData = logsAsync.maybeWhen(
+    final streakData = logsAsync.when(
       data: (logs) {
         int streak = 0;
-        final now = DateTime.now();
-        final today = DateTime(now.year, now.month, now.day);
+        final currentNow = DateTime.now();
+        final today = DateTime(currentNow.year, currentNow.month, currentNow.day);
         
-        // Start from today and work backwards
-        // Streak continues as long as each day has at least one taken dose
         for (int i = 0; i < 365; i++) {
           final date = today.subtract(Duration(days: i));
           final dayStart = DateTime(date.year, date.month, date.day);
@@ -206,8 +182,6 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> with SingleTicker
           ).toList();
           
           if (dayLogs.isEmpty) {
-            // Found a day with no taken doses - streak ends here
-            // If it's today (i == 0), streak is 0, otherwise streak is i
             break;
           } else {
             streak++;
@@ -215,7 +189,11 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> with SingleTicker
         }
         return streak;
       },
-      orElse: () => 0,
+      loading: () => 0,
+      error: (error, stack) {
+        debugPrint('Error calculating streak: $error');
+        return 0;
+      },
     );
 
     final theme = Theme.of(context);
@@ -259,10 +237,11 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> with SingleTicker
                       textAlign: TextAlign.center,
                     ),
                   ),
-                  const SizedBox(width: 48), // Balance spacing
+                  const SizedBox(width: 40), // Balance the back button
                 ],
               ),
             ),
+            
             // Summary Cards
             Padding(
               padding: const EdgeInsets.all(20),
@@ -272,9 +251,11 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> with SingleTicker
                     child: _SummaryCard(
                       title: '7-Day Adherence',
                       value: '${adherenceData['percentage']}%',
-                      subtitle: '+${(adherenceData['percentage'] as int) - (adherenceData['lastWeek'] as int)}% from last week',
+                      subtitle: adherenceData['lastWeek']! > adherenceData['percentage']!
+                          ? '${adherenceData['lastWeek']! - adherenceData['percentage']!}% from last week'
+                          : '+${adherenceData['percentage']! - adherenceData['lastWeek']!}% from last week',
                       color: AppTheme.teal500,
-                      icon: AppIcons.trendingUp,
+                      icon: AppIcons.barChart3,
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -282,7 +263,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> with SingleTicker
                     child: _SummaryCard(
                       title: 'Current Streak',
                       value: '$streakData days',
-                      subtitle: 'Keep it going!',
+                      subtitle: streakData > 0 ? 'Keep it going!' : 'Start your streak today',
                       color: AppTheme.blue500,
                       icon: AppIcons.trendingUp,
                     ),
@@ -290,42 +271,364 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> with SingleTicker
                 ],
               ),
             ),
-            // Tab Bar
-            Container(
-              margin: const EdgeInsets.symmetric(horizontal: 20),
-              decoration: BoxDecoration(
-                color: isDark ? AppTheme.gray700 : AppTheme.gray200,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: TabBar(
-                controller: _tabController,
-                indicator: BoxDecoration(
-                  color: isDark ? const Color(0xFF1F2937) : AppTheme.white,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                labelColor: isDark ? AppTheme.white : AppTheme.gray900,
-                unselectedLabelColor: isDark ? AppTheme.gray400 : AppTheme.gray700,
-                tabs: const [
-                  Tab(text: 'Chart'),
-                  Tab(text: 'Calendar'),
-                  Tab(text: 'List'),
-                ],
-              ),
-            ),
-            // Tab Views
+
+            // Main Content - Scrollable
             Expanded(
-              child: TabBarView(
-                controller: _tabController,
-                children: [
-                  _ChartView(
-                    selectedPeriod: _selectedPeriod, 
-                    onPeriodChanged: (period) {
-                      setState(() => _selectedPeriod = period);
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+                    // Adherence Rate Section
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF1F2937) : AppTheme.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: isDark ? AppTheme.gray700 : AppTheme.gray200,
+                width: 1,
+              ),
+              boxShadow: isDark
+                  ? []
+                  : [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.05),
+                        blurRadius: 10,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Adherence Rate',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: isDark ? AppTheme.white : AppTheme.gray900,
+                      ),
+                    ),
+                          const SizedBox(height: 16),
+                          Row(
+                      children: [
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                        Text(
+                                      '${adherenceData['percentage']}%',
+                                style: TextStyle(
+                                        fontSize: 36,
+                                        fontWeight: FontWeight.bold,
+                                        color: AppTheme.teal500,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                        Text(
+                                      '${adherenceData['taken']}/${adherenceData['expected']} doses',
+                                style: TextStyle(
+                                        fontSize: 14,
+                                  color: isDark 
+                                      ? AppTheme.white.withValues(alpha: 0.6)
+                                      : AppTheme.gray600,
+                                      ),
+                                ),
+                                  ],
+                              ),
+                              ),
+                              Container(
+                                width: 80,
+                                height: 80,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: AppTheme.teal500.withValues(alpha: 0.1),
+                                ),
+                        child: Center(
+                                  child: Text(
+                                    '${adherenceData['percentage']}%',
+                                    style: TextStyle(
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.bold,
+                                color: AppTheme.teal500,
+                              ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    
+                    const SizedBox(height: 20),
+                    
+                    // Calendar View
+                              Text(
+                      'Adherence Calendar',
+                                style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                                  color: isDark ? AppTheme.white : AppTheme.gray900,
+                                ),
+                              ),
+                    const SizedBox(height: 12),
+                    _CalendarView(now: now),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        _LegendItem(color: AppTheme.teal500, label: '100% adherence', isDark: isDark),
+                        const SizedBox(width: 16),
+                        _LegendItem(color: AppTheme.yellow500, label: 'Partial adherence', isDark: isDark),
+                        const SizedBox(width: 16),
+                        _LegendItem(color: AppTheme.red500, label: 'Missed doses', isDark: isDark),
+                      ],
+                    ),
+                    
+                    const SizedBox(height: 24),
+                    
+                    // Recent Activity
+                    Text(
+                      'Recent Activity',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: isDark ? AppTheme.white : AppTheme.gray900,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    logsAsync.when(
+                      data: (logs) {
+                        if (logs.isEmpty) {
+                          return Container(
+                            padding: const EdgeInsets.all(32),
+                            decoration: BoxDecoration(
+                              color: isDark ? const Color(0xFF1F2937) : AppTheme.white,
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(
+                                color: isDark ? AppTheme.gray700 : AppTheme.gray200,
+                                width: 1,
+                              ),
+                            ),
+                            child: Center(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                    AppIcons.bell,
+                                size: 48,
+                                    color: isDark ? AppTheme.gray400 : AppTheme.gray400,
+                              ),
+                              const SizedBox(height: 12),
+                              Text(
+                                    'No recent activity',
+                                style: TextStyle(
+                                  color: isDark ? AppTheme.white : AppTheme.gray900,
+                                      fontSize: 16,
+                                ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    'Log your medication doses to see activity here',
+                                    style: TextStyle(
+                                      color: isDark 
+                                          ? AppTheme.white.withValues(alpha: 0.6)
+                                          : AppTheme.gray600,
+                                      fontSize: 13,
+                                    ),
+                                    textAlign: TextAlign.center,
+                              ),
+                            ],
+                              ),
+                          ),
+                        );
+                        }
+                        final recent = logs.take(5).toList();
+                        return Column(
+                          children: recent.map((log) => _ActivityItem(
+                            log: log,
+                            isDark: isDark,
+                            medications: medicationsAsync.when(
+                              data: (meds) => meds,
+                              loading: () => [],
+                              error: (_, __) => [],
+                            ),
+                          )).toList(),
+                        );
+                      },
+                    loading: () => Padding(
+                      padding: const EdgeInsets.all(32),
+                      child: Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                                children: [
+                            CircularProgressIndicator(
+                              color: AppTheme.teal500,
+                            ),
+                            const SizedBox(height: 16),
+                                  Text(
+                                'Loading activity...',
+                              style: TextStyle(
+                                color: isDark ? AppTheme.white : AppTheme.gray900,
+                                  ),
+                                  ),
+                                ],
+                              ),
+                      ),
+                    ),
+                    error: (error, stack) {
+                        debugPrint('Error loading recent activity: $error');
+                        return Container(
+                          padding: const EdgeInsets.all(32),
+                          decoration: BoxDecoration(
+                            color: isDark ? const Color(0xFF1F2937) : AppTheme.white,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: isDark ? AppTheme.gray700 : AppTheme.gray200,
+                              width: 1,
+                            ),
+                          ),
+                          child: Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              AppIcons.alertCircle,
+                              size: 48,
+                              color: AppTheme.red500,
+                            ),
+                            const SizedBox(height: 12),
+                            Text(
+                                  'Error loading activity',
+                              style: TextStyle(
+                                color: isDark ? AppTheme.white : AppTheme.gray900,
+                                    fontSize: 16,
+                              ),
+                            ),
+                          ],
+                            ),
+                        ),
+                      );
                     },
                   ),
-                  _CalendarView(),
-                  _ListView(),
-                ],
+                    
+                    const SizedBox(height: 24),
+                    
+                    // Medication History List
+          Text(
+                      'Medication History',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: isDark ? AppTheme.white : AppTheme.gray900,
+            ),
+          ),
+          const SizedBox(height: 12),
+          logsAsync.when(
+                      data: (logs) => medicationsAsync.when(
+                        data: (medications) {
+              if (logs.isEmpty) {
+                return Container(
+                  padding: const EdgeInsets.all(32),
+                  decoration: BoxDecoration(
+                    color: isDark ? const Color(0xFF1F2937) : AppTheme.white,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: isDark ? AppTheme.gray700 : AppTheme.gray200,
+                      width: 1,
+                    ),
+                  ),
+                  child: Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                                      AppIcons.pill,
+                          size: 48,
+                          color: isDark ? AppTheme.gray400 : AppTheme.gray400,
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                                      'No medication history',
+                          style: TextStyle(
+                            color: isDark ? AppTheme.white : AppTheme.gray900,
+                            fontSize: 16,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                                      'Your medication logs will appear here',
+                          style: TextStyle(
+                            color: isDark 
+                                ? AppTheme.white.withValues(alpha: 0.6)
+                                : AppTheme.gray600,
+                            fontSize: 13,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }
+                          
+                          // Create a map for quick medication lookup
+                          final medicationMap = {
+                            for (var med in medications) med.id: med
+                          };
+                          
+              return Column(
+                            children: logs.map((log) {
+                              final medication = medicationMap[log.medicationId];
+                              return _HistoryItem(
+                                log: log,
+                                medication: medication,
+                                isDark: isDark,
+                              );
+                            }).toList(),
+              );
+            },
+            loading: () => Padding(
+              padding: const EdgeInsets.all(32),
+              child: Center(
+                            child: CircularProgressIndicator(
+                      color: AppTheme.teal500,
+                    ),
+                          ),
+                        ),
+                        error: (error, stack) => Container(
+                          padding: const EdgeInsets.all(16),
+                          child: Text(
+                            'Error loading medications',
+                      style: TextStyle(
+                        color: isDark ? AppTheme.white : AppTheme.gray900,
+                      ),
+                    ),
+                        ),
+                      ),
+                      loading: () => Padding(
+                        padding: const EdgeInsets.all(32),
+                        child: Center(
+                          child: CircularProgressIndicator(
+                            color: AppTheme.teal500,
+                          ),
+                        ),
+                      ),
+                      error: (error, stack) => Container(
+                        padding: const EdgeInsets.all(16),
+                        child: Text(
+                          'Error loading history',
+                          style: TextStyle(
+                            color: isDark ? AppTheme.white : AppTheme.gray900,
+                          ),
+                        ),
+                      ),
+                    ),
+                    
+                    const SizedBox(height: 20),
+                  ],
+                ),
               ),
             ),
           ],
@@ -353,29 +656,29 @@ class _SummaryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+              return Container(
       padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
+                decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [color, color.withValues(alpha: 0.8)],
         ),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Column(
+                  borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
+                    children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
+                      Text(
                 title,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                      ),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
               Icon(icon, color: Colors.white, size: 20),
             ],
@@ -383,10 +686,10 @@ class _SummaryCard extends StatelessWidget {
           const SizedBox(height: 12),
           Text(
             value,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 28,
-                        fontWeight: FontWeight.bold,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 28,
+              fontWeight: FontWeight.bold,
                       ),
           ),
           const SizedBox(height: 4),
@@ -403,394 +706,19 @@ class _SummaryCard extends StatelessWidget {
   }
 }
 
-class _ChartView extends ConsumerWidget {
-  final String selectedPeriod;
-  final ValueChanged<String> onPeriodChanged;
-
-  const _ChartView({
-    required this.selectedPeriod,
-    required this.onPeriodChanged,
-  });
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final now = DateTime.now();
-    final logsAsync = ref.watch(logsStreamProvider(now));
-    final medicationsAsync = ref.watch(medicationsStreamProvider);
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: isDark ? const Color(0xFF1F2937) : AppTheme.white,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: isDark ? AppTheme.gray700 : AppTheme.gray200,
-                width: 1,
-              ),
-              boxShadow: isDark
-                  ? []
-                  : [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.05),
-                        blurRadius: 10,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'Adherence Rate',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: isDark ? AppTheme.white : AppTheme.gray900,
-                      ),
-                    ),
-                    DropdownButton<String>(
-                      value: selectedPeriod,
-                      dropdownColor: isDark ? const Color(0xFF1F2937) : AppTheme.white,
-                      style: TextStyle(
-                        color: isDark ? AppTheme.white : AppTheme.gray900,
-                      ),
-                      items: ['This Week', 'This Month', 'Last 3 Months'].map((period) {
-                        return DropdownMenuItem(
-                          value: period,
-                          child: Text(
-                            period,
-                            style: TextStyle(
-                              color: isDark ? AppTheme.white : AppTheme.gray900,
-                            ),
-                          ),
-                        );
-                      }).toList(),
-                      onChanged: (value) {
-                        if (value != null) onPeriodChanged(value);
-                      },
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 24),
-                SizedBox(
-                  height: 200,
-                  child: logsAsync.when(
-                    data: (logs) {
-                      return medicationsAsync.when(
-                        data: (medications) {
-                        // Calculate daily adherence for this week
-                        final currentNow = DateTime.now();
-                        final weekData = List.generate(7, (index) {
-                          final date = currentNow.subtract(Duration(days: 6 - index));
-                          final dayStart = DateTime(date.year, date.month, date.day);
-                          final dayEnd = dayStart.add(const Duration(days: 1));
-                          
-                          // Get expected doses for this day
-                          int expectedDoses = 0;
-                          for (final med in medications) {
-                            if (med.startDate.isBefore(dayEnd) && (med.endDate == null || med.endDate!.isAfter(dayStart))) {
-                              expectedDoses += med.timesPerDay.length;
-                            }
-                          }
-                          
-                          // Get taken doses for this day
-                          final takenDoses = logs.where((log) =>
-                            log.timestamp.isAfter(dayStart) &&
-                            log.timestamp.isBefore(dayEnd) &&
-                            log.status == MedEventStatus.taken
-                          ).length;
-                          
-                          final percentage = expectedDoses > 0 ? (takenDoses / expectedDoses * 100).round() : 0;
-                          return {'day': DateFormat('E').format(date).substring(0, 3), 'value': percentage};
-                        });
-
-                        // Show empty state if no medications or no data
-                        if (medications.isEmpty || weekData.every((d) => (d['value'] as int) == 0)) {
-                          return Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                                AppIcons.barChart3,
-                                size: 48,
-                                color: isDark ? AppTheme.gray400 : AppTheme.gray400,
-                              ),
-                              const SizedBox(height: 12),
-                        Text(
-                                medications.isEmpty 
-                                    ? 'No medications yet' 
-                                    : 'No adherence data yet',
-                                style: TextStyle(
-                                  color: isDark ? AppTheme.white : AppTheme.gray900,
-                                  fontSize: 16,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                        Text(
-                                medications.isEmpty
-                                    ? 'Add medications to track adherence'
-                                    : 'Log your medication doses to see trends',
-                                style: TextStyle(
-                                  color: isDark 
-                                      ? AppTheme.white.withValues(alpha: 0.6)
-                                      : AppTheme.gray600,
-                                  fontSize: 13,
-                                ),
-                                textAlign: TextAlign.center,
-                              ),
-                            ],
-                          );
-                        }
-                        
-                          return _SimpleLineChart(data: weekData, isDark: isDark);
-                        },
-                        loading: () => Padding(
-                          padding: const EdgeInsets.all(32),
-                          child: Center(
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                CircularProgressIndicator(
-                                  color: AppTheme.teal500,
-                                ),
-                                const SizedBox(height: 16),
-                                Text(
-                                  'Loading medications...',
-                                  style: TextStyle(
-                                    color: isDark ? AppTheme.white : AppTheme.gray900,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                        error: (error, stack) {
-                          debugPrint('Error loading medications: $error');
-                          return Center(
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  AppIcons.alertCircle,
-                                  size: 48,
-                                  color: AppTheme.red500,
-                                ),
-                                const SizedBox(height: 12),
-                                Text(
-                                  'Error loading medications',
-                                  style: TextStyle(
-                                    color: isDark ? AppTheme.white : AppTheme.gray900,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          );
-                        },
-                      );
-                    },
-                    loading: () => Padding(
-                      padding: const EdgeInsets.all(32),
-                      child: Center(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                                children: [
-                            CircularProgressIndicator(
-                              color: AppTheme.teal500,
-                            ),
-                            const SizedBox(height: 16),
-                                  Text(
-                              'Loading logs...',
-                              style: TextStyle(
-                                color: isDark ? AppTheme.white : AppTheme.gray900,
-                                  ),
-                                  ),
-                                ],
-                              ),
-                      ),
-                    ),
-                    error: (error, stack) {
-                      debugPrint('Error loading logs: $error');
-                      return Center(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              AppIcons.alertCircle,
-                              size: 48,
-                              color: AppTheme.red500,
-                            ),
-                            const SizedBox(height: 12),
-                            Text(
-                              'Error loading chart data',
-                              style: TextStyle(
-                                color: isDark ? AppTheme.white : AppTheme.gray900,
-                              ),
-                            ),
-                          ],
-                        ),
-                      );
-                    },
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 20),
-          // Recent Activity
-          Text(
-            'Recent Activity',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: isDark ? AppTheme.white : AppTheme.gray900,
-            ),
-          ),
-          const SizedBox(height: 12),
-          logsAsync.when(
-            data: (logs) {
-              if (logs.isEmpty) {
-                return Container(
-                  padding: const EdgeInsets.all(32),
-                  decoration: BoxDecoration(
-                    color: isDark ? const Color(0xFF1F2937) : AppTheme.white,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: isDark ? AppTheme.gray700 : AppTheme.gray200,
-                      width: 1,
-                    ),
-                  ),
-                  child: Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          AppIcons.bell,
-                          size: 48,
-                          color: isDark ? AppTheme.gray400 : AppTheme.gray400,
-                        ),
-                        const SizedBox(height: 12),
-                        Text(
-                          'No recent activity',
-                          style: TextStyle(
-                            color: isDark ? AppTheme.white : AppTheme.gray900,
-                            fontSize: 16,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'Log your medication doses to see activity here',
-                          style: TextStyle(
-                            color: isDark 
-                                ? AppTheme.white.withValues(alpha: 0.6)
-                                : AppTheme.gray600,
-                            fontSize: 13,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              }
-              final recent = logs.take(5).toList();
-              return Column(
-                children: recent.map((log) => _ActivityItem(log: log, isDark: isDark)).toList(),
-              );
-            },
-            loading: () => Padding(
-              padding: const EdgeInsets.all(32),
-              child: Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    CircularProgressIndicator(
-                      color: AppTheme.teal500,
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      'Loading activity...',
-                      style: TextStyle(
-                        color: isDark ? AppTheme.white : AppTheme.gray900,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            error: (error, stack) {
-              debugPrint('Error loading recent activity: $error');
-              return Container(
-                padding: const EdgeInsets.all(32),
-                decoration: BoxDecoration(
-                  color: isDark ? const Color(0xFF1F2937) : AppTheme.white,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                    color: isDark ? AppTheme.gray700 : AppTheme.gray200,
-                    width: 1,
-                  ),
-                ),
-                child: Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        AppIcons.alertCircle,
-                        size: 48,
-                        color: AppTheme.red500,
-                      ),
-                      const SizedBox(height: 12),
-                      Text(
-                        'Error loading activity',
-                        style: TextStyle(
-                          color: isDark ? AppTheme.white : AppTheme.gray900,
-                          fontSize: 16,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            },
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 class _CalendarView extends ConsumerWidget {
+  final DateTime now;
+
+  const _CalendarView({required this.now});
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final now = DateTime.now();
     final logsAsync = ref.watch(logsStreamProvider(now));
     final medicationsAsync = ref.watch(medicationsStreamProvider);
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Adherence Calendar',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: isDark ? AppTheme.white : AppTheme.gray900,
-            ),
-          ),
-          const SizedBox(height: 16),
-          Container(
+    return Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
               color: isDark ? const Color(0xFF1F2937) : AppTheme.white,
@@ -801,9 +729,8 @@ class _CalendarView extends ConsumerWidget {
               ),
             ),
             child: logsAsync.when(
-              data: (logs) => medicationsAsync.maybeWhen(
+        data: (logs) => medicationsAsync.when(
                 data: (medications) {
-                
                 // Generate calendar grid for current month
                 final firstDay = DateTime(now.year, now.month, 1);
                 final startDate = firstDay.subtract(Duration(days: firstDay.weekday % 7));
@@ -912,59 +839,65 @@ class _CalendarView extends ConsumerWidget {
                   ],
                 );
                 },
-                orElse: () => const Center(child: CircularProgressIndicator()),
+          loading: () => const Center(
+            child: Padding(
+              padding: EdgeInsets.all(32),
+              child: CircularProgressIndicator(),
               ),
-              loading: () => const Center(child: CircularProgressIndicator()),
+          ),
               error: (_, __) => Center(
                 child: Text(
-                  'Error loading logs',
+              'Error loading medications',
                   style: TextStyle(color: isDark ? AppTheme.white : AppTheme.gray900),
                 ),
               ),
             ),
+        loading: () => const Center(
+          child: Padding(
+            padding: EdgeInsets.all(32),
+            child: CircularProgressIndicator(),
           ),
-          const SizedBox(height: 20),
-          Row(
-            children: [
-              _LegendItem(color: AppTheme.teal500, label: '100% adherence', isDark: isDark),
-              const SizedBox(width: 16),
-              _LegendItem(color: AppTheme.yellow500, label: 'Partial adherence', isDark: isDark),
-              const SizedBox(width: 16),
-              _LegendItem(color: AppTheme.red500, label: 'Missed doses', isDark: isDark),
-            ],
+        ),
+        error: (_, __) => Center(
+          child: Text(
+            'Error loading logs',
+            style: TextStyle(color: isDark ? AppTheme.white : AppTheme.gray900),
           ),
-        ],
+          ),
       ),
     );
   }
 }
 
-class _ListView extends ConsumerWidget {
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final now = DateTime.now();
-    final logsAsync = ref.watch(logsStreamProvider(now));
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
+class _ActivityItem extends StatelessWidget {
+  final MedLog log;
+  final bool isDark;
+  final List<Medication> medications;
 
-    return logsAsync.when(
-      data: (logs) {
-        if (logs.isEmpty) {
-          return Center(
-            child: Text(
-              'No logs found',
-              style: TextStyle(
-                color: isDark ? AppTheme.white : AppTheme.gray900,
-              ),
-            ),
-          );
-        }
-        return ListView.builder(
-          padding: const EdgeInsets.all(20),
-          itemCount: logs.length,
-          itemBuilder: (context, index) {
-            final log = logs[index];
-            final isTaken = log.status == MedEventStatus.taken;
+  const _ActivityItem({
+    required this.log,
+    required this.isDark,
+    required this.medications,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isToday = log.timestamp.year == DateTime.now().year &&
+        log.timestamp.month == DateTime.now().month &&
+        log.timestamp.day == DateTime.now().day;
+    final isTaken = log.status == MedEventStatus.taken;
+    final medication = medications.firstWhere(
+      (med) => med.id == log.medicationId,
+      orElse: () => Medication(
+        id: '',
+        name: 'Unknown Medication',
+        dosage: '',
+        timesPerDay: [],
+        frequency: 'daily',
+        startDate: DateTime.now(),
+      ),
+    );
+
             return Container(
               margin: const EdgeInsets.only(bottom: 12),
               padding: const EdgeInsets.all(16),
@@ -978,9 +911,19 @@ class _ListView extends ConsumerWidget {
               ),
               child: Row(
                 children: [
-                  Icon(
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: isTaken
+                  ? AppTheme.teal100
+                  : (isDark ? AppTheme.gray700 : AppTheme.gray100),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
                     isTaken ? AppIcons.check : AppIcons.x,
-                    color: isTaken ? AppTheme.teal500 : AppTheme.gray400,
+              color: isTaken ? AppTheme.teal600 : AppTheme.gray400,
+              size: 20,
+            ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -988,7 +931,7 @@ class _ListView extends ConsumerWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Medication Log',
+                  medication.name,
                           style: TextStyle(
                             fontWeight: FontWeight.w600,
                             color: isDark ? AppTheme.white : AppTheme.gray900,
@@ -996,7 +939,9 @@ class _ListView extends ConsumerWidget {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          DateFormat('MMM dd, yyyy • h:mm a').format(log.timestamp),
+                  isToday
+                      ? 'Today, ${DateFormat('h:mm a').format(log.timestamp)}'
+                      : DateFormat('MMM dd, h:mm a').format(log.timestamp),
                           style: TextStyle(
                             color: isDark 
                                 ? AppTheme.white.withValues(alpha: 0.6)
@@ -1007,56 +952,43 @@ class _ListView extends ConsumerWidget {
                       ],
                     ),
                   ),
+          if (isTaken)
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
-                      color: isTaken
-                          ? AppTheme.teal100
-                          : (isDark ? AppTheme.gray700 : AppTheme.gray100),
+                color: AppTheme.teal100,
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Text(
-                      log.status.name.toUpperCase(),
+                'Taken',
                       style: TextStyle(
-                        color: isTaken
-                            ? AppTheme.teal700
-                            : (isDark ? AppTheme.gray400 : AppTheme.gray700),
+                  color: AppTheme.teal700,
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
                   ),
                 ],
-              ),
-            );
-          },
-        );
-      },
-      loading: () => const Center(child: CircularProgressIndicator()),
-      error: (_, __) => Center(
-        child: Text(
-          'Error',
-          style: TextStyle(
-            color: isDark ? AppTheme.white : AppTheme.gray900,
-          ),
-        ),
       ),
     );
   }
 }
 
-class _ActivityItem extends StatelessWidget {
+class _HistoryItem extends StatelessWidget {
   final MedLog log;
+  final Medication? medication;
   final bool isDark;
 
-  const _ActivityItem({required this.log, required this.isDark});
+  const _HistoryItem({
+    required this.log,
+    this.medication,
+    required this.isDark,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final isToday = log.timestamp.year == DateTime.now().year &&
-        log.timestamp.month == DateTime.now().month &&
-        log.timestamp.day == DateTime.now().day;
     final isTaken = log.status == MedEventStatus.taken;
+    final medicationName = medication?.name ?? 'Unknown Medication';
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -1071,19 +1003,9 @@ class _ActivityItem extends StatelessWidget {
       ),
         child: Row(
           children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: isTaken
-                  ? AppTheme.teal100
-                  : (isDark ? AppTheme.gray700 : AppTheme.gray100),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
+          Icon(
               isTaken ? AppIcons.check : AppIcons.x,
-              color: isTaken ? AppTheme.teal600 : AppTheme.gray400,
-              size: 20,
-            ),
+            color: isTaken ? AppTheme.teal500 : AppTheme.gray400,
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -1091,7 +1013,7 @@ class _ActivityItem extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                  'Medication ${log.status.name}',
+                  medicationName,
                   style: TextStyle(
                     fontWeight: FontWeight.w600,
                     color: isDark ? AppTheme.white : AppTheme.gray900,
@@ -1099,9 +1021,7 @@ class _ActivityItem extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                   Text(
-                  isToday
-                      ? 'Today, ${DateFormat('h:mm a').format(log.timestamp)}'
-                      : DateFormat('MMM dd, h:mm a').format(log.timestamp),
+                  DateFormat('MMM dd, yyyy • h:mm a').format(log.timestamp),
                   style: TextStyle(
                     color: isDark 
                         ? AppTheme.white.withValues(alpha: 0.6)
@@ -1109,20 +1029,35 @@ class _ActivityItem extends StatelessWidget {
                     fontSize: 12,
                   ),
                 ),
+                if (medication != null && medication!.dosage.isNotEmpty) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    medication!.dosage,
+                    style: TextStyle(
+                      color: isDark 
+                          ? AppTheme.white.withValues(alpha: 0.5)
+                          : AppTheme.gray500,
+                      fontSize: 11,
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
-          if (isTaken)
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
-                color: AppTheme.teal100,
+              color: isTaken
+                  ? AppTheme.teal100
+                  : (isDark ? AppTheme.gray700 : AppTheme.gray100),
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Text(
-                'Taken',
+              log.status.name.toUpperCase(),
                 style: TextStyle(
-                  color: AppTheme.teal700,
+                color: isTaken
+                    ? AppTheme.teal700
+                    : (isDark ? AppTheme.gray400 : AppTheme.gray700),
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
                 ),
@@ -1164,119 +1099,4 @@ class _LegendItem extends StatelessWidget {
       ],
     );
   }
-}
-
-class _SimpleLineChart extends StatelessWidget {
-  final List<Map<String, dynamic>> data;
-  final bool isDark;
-
-  const _SimpleLineChart({required this.data, required this.isDark});
-
-  @override
-  Widget build(BuildContext context) {
-    if (data.isEmpty) {
-      return const SizedBox.shrink();
-    }
-
-    const double chartHeight = 150;
-    const double chartWidth = 300;
-    const double padding = 20;
-
-    final maxValue = data.map((d) => d['value'] as int).reduce(math.max);
-    final minValue = 0;
-    final range = maxValue - minValue;
-
-    // Generate points
-    final points = <Offset>[];
-    for (int i = 0; i < data.length; i++) {
-      final value = data[i]['value'] as int;
-      final x = padding + (chartWidth - 2 * padding) * (i / (data.length - 1));
-      final y = padding + (chartHeight - 2 * padding) * (1 - (value - minValue) / range);
-      points.add(Offset(x, y));
-    }
-
-    return SizedBox(
-      height: chartHeight,
-      width: chartWidth,
-      child: CustomPaint(
-        painter: _LineChartPainter(points: points),
-        child: Column(
-          children: [
-            Expanded(
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text('100', style: TextStyle(fontSize: 10, color: isDark ? AppTheme.gray400 : AppTheme.gray600)),
-                  Text('75', style: TextStyle(fontSize: 10, color: isDark ? AppTheme.gray400 : AppTheme.gray600)),
-                  Text('50', style: TextStyle(fontSize: 10, color: isDark ? AppTheme.gray400 : AppTheme.gray600)),
-                  Text('25', style: TextStyle(fontSize: 10, color: isDark ? AppTheme.gray400 : AppTheme.gray600)),
-                  Text('0', style: TextStyle(fontSize: 10, color: isDark ? AppTheme.gray400 : AppTheme.gray600)),
-                ],
-              ),
-            ),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: data.map((d) => Text(
-                d['day'] as String,
-                style: TextStyle(fontSize: 10, color: isDark ? AppTheme.gray400 : AppTheme.gray600),
-              )).toList(),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _LineChartPainter extends CustomPainter {
-  final List<Offset> points;
-
-  _LineChartPainter({required this.points});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    if (points.length < 2) return;
-
-    final paint = Paint()
-      ..color = AppTheme.teal500
-      ..strokeWidth = 2
-      ..style = PaintingStyle.stroke;
-
-    final path = Path();
-    path.moveTo(points[0].dx, points[0].dy);
-    for (int i = 1; i < points.length; i++) {
-      path.lineTo(points[i].dx, points[i].dy);
-    }
-
-    canvas.drawPath(path, paint);
-
-    // Draw filled area
-    final fillPath = Path.from(path);
-    fillPath.lineTo(points.last.dx, size.height - 20);
-    fillPath.lineTo(points.first.dx, size.height - 20);
-    fillPath.close();
-
-    // Create teal gradient fill
-    final fillPaint = Paint()
-      ..shader = LinearGradient(
-        begin: Alignment.topCenter,
-        end: Alignment.bottomCenter,
-        colors: [
-          AppTheme.teal500.withValues(alpha: 0.3),
-          AppTheme.teal500.withValues(alpha: 0.0),
-        ],
-        stops: const [0.05, 0.95],
-      ).createShader(Rect.fromLTWH(0, 0, size.width, size.height))
-      ..style = PaintingStyle.fill;
-
-    canvas.drawPath(fillPath, fillPaint);
-
-    // Draw points
-    for (final point in points) {
-      canvas.drawCircle(point, 4, Paint()..color = AppTheme.teal500);
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

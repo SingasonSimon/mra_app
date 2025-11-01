@@ -211,11 +211,11 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> with SingleTi
                 opacity: _fadeAnimation,
                 child: SlideTransition(
                   position: _slideAnimation,
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.all(20),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
                     // Next Dose Reminder Card
                     nextDoseAsyncValue.when(
                       data: (nextDose) {
@@ -380,7 +380,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> with SingleTi
                       loading: () => const Center(child: CircularProgressIndicator()),
                       error: (_, __) => const SizedBox.shrink(),
                     ),
-                      ],
+                  ],
                     ),
                   ),
                 ),
@@ -533,27 +533,27 @@ class _QuickActionButtonState extends State<_QuickActionButton> with SingleTicke
         scale: _scaleAnimation,
         child: InkWell(
           onTap: widget.onTap,
-          borderRadius: BorderRadius.circular(12),
-          child: Container(
-            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
-            decoration: BoxDecoration(
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+        decoration: BoxDecoration(
               color: widget.color,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
                 Icon(widget.icon, color: Colors.white, size: 24),
-                const SizedBox(height: 8),
-                Text(
+            const SizedBox(height: 8),
+            Text(
                   widget.label,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
             ),
           ),
         ),
