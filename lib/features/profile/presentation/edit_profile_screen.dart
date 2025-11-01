@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../auth/providers/auth_providers.dart';
 import '../../../core/models/user_profile.dart';
 import '../../../app/theme/app_theme.dart';
+import '../../../utils/navigation_helper.dart';
 
 class EditProfileScreen extends ConsumerStatefulWidget {
   const EditProfileScreen({super.key});
@@ -89,7 +90,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Profile updated successfully')),
         );
-        context.pop();
+        context.safePop();
       }
     } catch (e) {
       if (mounted) {
@@ -121,6 +122,10 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
       appBar: AppBar(
         backgroundColor: AppTheme.primary,
         foregroundColor: Colors.white,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () => context.safePop(),
+        ),
         title: const Text(
           'Edit Profile',
           style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),

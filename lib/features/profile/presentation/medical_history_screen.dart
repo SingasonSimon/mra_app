@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../../auth/providers/auth_providers.dart';
 import '../../../app/theme/app_theme.dart';
+import '../../../utils/navigation_helper.dart';
 import 'package:intl/intl.dart';
 
 class MedicalHistoryScreen extends ConsumerWidget {
@@ -16,6 +18,10 @@ class MedicalHistoryScreen extends ConsumerWidget {
       appBar: AppBar(
         backgroundColor: AppTheme.primary,
         foregroundColor: Colors.white,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () => context.safePop(),
+        ),
         title: const Text(
           'Medical History',
           style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),

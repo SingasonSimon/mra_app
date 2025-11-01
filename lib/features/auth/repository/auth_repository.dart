@@ -7,7 +7,7 @@ class AuthRepository {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   
-  // GoogleSignIn instance - singleton pattern in v7.2.0
+  // GoogleSignIn instance - use singleton pattern
   GoogleSignIn get _googleSignIn => GoogleSignIn.instance;
 
   Stream<User?> get authStateChanges => _auth.authStateChanges();
@@ -51,16 +51,15 @@ class AuthRepository {
 
   Future<UserCredential> signInWithGoogle() async {
     try {
-      // Trigger the authentication flow using authenticate() method for v7.2.0
-      final GoogleSignInAccount googleUser = await _googleSignIn.authenticate(
-        scopeHint: ['email', 'profile'],
-      );
-
+      // Trigger the authentication flow using authenticate() for v7.2.0
+      final GoogleSignInAccount googleUser = await _googleSignIn.authenticate();
+      
       // Obtain the auth details from the request
-      final GoogleSignInAuthentication googleAuth = googleUser.authentication;
+      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
       
       // Create a new credential
-      // Note: In v7.2.0, authentication returns tokens directly
+      // Note: In v7.2.0, GoogleSignInAuthentication only has idToken, no accessToken
+      // Firebase Auth can work with just idToken for Google Sign-In
       final credential = GoogleAuthProvider.credential(
         idToken: googleAuth.idToken,
       );

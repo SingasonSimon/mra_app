@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/models/appointment.dart';
 import '../providers/appointment_providers.dart';
 import '../../../di/providers.dart';
+import '../../../utils/navigation_helper.dart';
 
 class AddAppointmentScreen extends ConsumerStatefulWidget {
   final Appointment? appointment;
@@ -153,7 +154,7 @@ class _AddAppointmentScreenState extends ConsumerState<AddAppointmentScreen> {
       }
 
       if (mounted) {
-        context.pop();
+        context.safePop();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(widget.appointment != null
@@ -175,6 +176,10 @@ class _AddAppointmentScreenState extends ConsumerState<AddAppointmentScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => context.safePop(),
+        ),
         title: Text(widget.appointment != null ? 'Edit Appointment' : 'Add Appointment'),
       ),
       body: Form(

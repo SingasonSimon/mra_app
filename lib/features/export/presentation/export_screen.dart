@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import '../services/export_service.dart';
 import '../../logs/providers/logs_providers.dart';
 import '../../logs/repository/logs_repository.dart';
+import '../../../app/theme/app_theme.dart';
 
 final exportServiceProvider = Provider<ExportService>((ref) {
   final logsRepo = ref.watch(logsRepositoryProvider);
@@ -91,16 +92,40 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    
     return Scaffold(
+      backgroundColor: theme.colorScheme.background,
       appBar: AppBar(
         title: const Text('Export Data'),
+        backgroundColor: isDark ? const Color(0xFF1F2937) : AppTheme.teal500,
+        foregroundColor: AppTheme.white,
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Card(
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: isDark ? const Color(0xFF1F2937) : AppTheme.white,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: isDark ? AppTheme.gray700 : AppTheme.gray200,
+                  width: 1,
+                ),
+                boxShadow: isDark
+                    ? []
+                    : [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.05),
+                          blurRadius: 10,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+              ),
               child: Padding(
                 padding: const EdgeInsets.all(16),
                 child: Column(
@@ -159,6 +184,8 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
               icon: const Icon(Icons.file_download),
               label: const Text('Export as CSV'),
               style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.teal500,
+                foregroundColor: AppTheme.white,
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16),
@@ -171,6 +198,8 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
               icon: const Icon(Icons.description),
               label: const Text('Export Summary Report'),
               style: OutlinedButton.styleFrom(
+                foregroundColor: AppTheme.teal500,
+                side: const BorderSide(color: AppTheme.teal500, width: 1),
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16),

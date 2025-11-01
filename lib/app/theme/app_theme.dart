@@ -183,6 +183,15 @@ class AppTheme {
           return gray200;
         }),
       ),
+      snackBarTheme: SnackBarThemeData(
+        backgroundColor: gray900,
+        contentTextStyle: textTheme.bodyMedium?.copyWith(color: white),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+        behavior: SnackBarBehavior.floating,
+        elevation: 4,
+      ),
     );
   }
 
@@ -272,6 +281,15 @@ class AppTheme {
           borderSide: const BorderSide(color: teal500, width: 2),
         ),
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      ),
+      snackBarTheme: SnackBarThemeData(
+        backgroundColor: const Color(0xFF1F2937),
+        contentTextStyle: textTheme.bodyMedium?.copyWith(color: white),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+        behavior: SnackBarBehavior.floating,
+        elevation: 4,
       ),
     );
   }

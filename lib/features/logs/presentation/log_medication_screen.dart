@@ -8,13 +8,21 @@ import '../providers/logs_providers.dart';
 import '../repository/logs_repository.dart';
 import '../../../utils/navigation_helper.dart';
 
-class LogMedicationScreen extends ConsumerWidget {
+class LogMedicationScreen extends ConsumerStatefulWidget {
   final String medicationId;
 
   const LogMedicationScreen({super.key, required this.medicationId});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<LogMedicationScreen> createState() => _LogMedicationScreenState();
+}
+
+class _LogMedicationScreenState extends ConsumerState<LogMedicationScreen> {
+  bool _isLoading = false;
+  String? _loadingAction; // 'taken', 'snoozed', 'skipped'
+
+  @override
+  Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     
@@ -31,7 +39,7 @@ class LogMedicationScreen extends ConsumerWidget {
         backgroundColor: isDark ? const Color(0xFF1F2937) : Colors.white,
       ),
       body: FutureBuilder<Medication?>(
-        future: ref.read(medicationRepositoryProvider).getMedication(medicationId),
+        future: ref.read(medicationRepositoryProvider).getMedication(widget.medicationId),
         builder: (context, snapshot) {
           if (!snapshot.hasData) {
             return const Center(child: CircularProgressIndicator());
@@ -116,39 +124,42 @@ class LogMedicationScreen extends ConsumerWidget {
                   icon: Icons.check_circle,
                   label: 'Taken',
                   color: Colors.green,
-                  onPressed: () => _logMedication(
-                    context,
-                    ref,
-                    medication,
-                    closestTime ?? TimeOfDay.now(),
-                    MedEventStatus.taken,
-                  ),
+                  isLoading: _isLoading && _loadingAction == 'taken',
+                  onPressed: _isLoading
+                      ? null
+                      : () => _logMedication(
+                            medication,
+                            closestTime ?? TimeOfDay.now(),
+                            MedEventStatus.taken,
+                          ),
                 ),
                 const SizedBox(height: 12),
                 _LogActionButton(
                   icon: Icons.snooze,
                   label: 'Snooze',
                   color: Colors.orange,
-                  onPressed: () => _logMedication(
-                    context,
-                    ref,
-                    medication,
-                    closestTime ?? TimeOfDay.now(),
-                    MedEventStatus.snoozed,
-                  ),
+                  isLoading: _isLoading && _loadingAction == 'snoozed',
+                  onPressed: _isLoading
+                      ? null
+                      : () => _logMedication(
+                            medication,
+                            closestTime ?? TimeOfDay.now(),
+                            MedEventStatus.snoozed,
+                          ),
                 ),
                 const SizedBox(height: 12),
                 _LogActionButton(
                   icon: Icons.close,
                   label: 'Skip',
                   color: Colors.red,
-                  onPressed: () => _logMedication(
-                    context,
-                    ref,
-                    medication,
-                    closestTime ?? TimeOfDay.now(),
-                    MedEventStatus.skipped,
-                  ),
+                  isLoading: _isLoading && _loadingAction == 'skipped',
+                  onPressed: _isLoading
+                      ? null
+                      : () => _logMedication(
+                            medication,
+                            closestTime ?? TimeOfDay.now(),
+                            MedEventStatus.skipped,
+                          ),
                 ),
               ],
             ),
@@ -159,12 +170,17 @@ class LogMedicationScreen extends ConsumerWidget {
   }
 
   Future<void> _logMedication(
-    BuildContext context,
-    WidgetRef ref,
     Medication medication,
     TimeOfDay scheduledTime,
     MedEventStatus status,
   ) async {
+    if (_isLoading) return;
+
+    setState(() {
+      _isLoading = true;
+      _loadingAction = status.name;
+    });
+
     try {
       final logsRepo = ref.read(logsRepositoryProvider);
       final now = DateTime.now();
@@ -186,7 +202,7 @@ class LogMedicationScreen extends ConsumerWidget {
 
       await logsRepo.logMedicationEvent(log);
 
-      if (context.mounted) {
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Medication logged as ${status.name}'),
@@ -201,10 +217,17 @@ class LogMedicationScreen extends ConsumerWidget {
         context.safePop();
       }
     } catch (e) {
-      if (context.mounted) {
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error: ${e.toString()}')),
         );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _loadingAction = null;
+        });
       }
     }
   }
@@ -214,27 +237,39 @@ class _LogActionButton extends StatelessWidget {
   final IconData icon;
   final String label;
   final Color color;
-  final VoidCallback onPressed;
+  final VoidCallback? onPressed;
+  final bool isLoading;
 
   const _LogActionButton({
     required this.icon,
     required this.label,
     required this.color,
     required this.onPressed,
+    this.isLoading = false,
   });
 
   @override
   Widget build(BuildContext context) {
     return Card(
-      color: color.withOpacity(0.1),
+      color: color.withValues(alpha: 0.1),
       child: InkWell(
-        onTap: onPressed,
+        onTap: isLoading ? null : onPressed,
         borderRadius: BorderRadius.circular(16),
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Row(
             children: [
-              Icon(icon, color: color, size: 32),
+              if (isLoading)
+                SizedBox(
+                  width: 32,
+                  height: 32,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    valueColor: AlwaysStoppedAnimation<Color>(color),
+                  ),
+                )
+              else
+                Icon(icon, color: color, size: 32),
               const SizedBox(width: 16),
               Text(
                 label,
@@ -244,7 +279,8 @@ class _LogActionButton extends StatelessWidget {
                     ),
               ),
               const Spacer(),
-              Icon(Icons.chevron_right, color: color),
+              if (!isLoading)
+                Icon(Icons.chevron_right, color: color),
             ],
           ),
         ),

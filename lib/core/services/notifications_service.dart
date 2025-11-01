@@ -218,10 +218,11 @@ class NotificationsService {
     required DateTime scheduledTime,
     String? medicationId,
     bool useRecurring = true,
+    bool playSound = true,
   }) async {
     await initialize();
 
-    // Use custom alarm sound for medication reminders
+    // Use custom alarm sound for medication reminders if sound is enabled
     // Android: Place alarm.mp3, alarm.wav, or alarm.ogg in android/app/src/main/res/raw/
     // iOS: Place alarm.caf, alarm.aiff, or alarm.wav in ios/Runner/
     // If sound file doesn't exist, Android will use default notification sound
@@ -233,8 +234,8 @@ class NotificationsService {
       priority: Priority.high,
       enableVibration: true,
       vibrationPattern: Int64List.fromList([0, 500, 250, 500, 250, 500]), // Vibrate pattern: wait 0ms, vibrate 500ms, pause 250ms, repeat
-      playSound: true,
-      sound: const RawResourceAndroidNotificationSound('alarm'), // Custom alarm sound (10-15 seconds)
+      playSound: playSound,
+      sound: playSound ? const RawResourceAndroidNotificationSound('alarm') : null, // Custom alarm sound (10-15 seconds) or null if sound disabled
       ongoing: false, // Not ongoing - allows dismissal
       autoCancel: false, // Don't auto-cancel so user can interact with it
       actions: const [
@@ -244,11 +245,11 @@ class NotificationsService {
       ],
     );
 
-    const iosDetails = DarwinNotificationDetails(
+    final iosDetails = DarwinNotificationDetails(
       presentAlert: true,
       presentBadge: true,
-      presentSound: true,
-      sound: 'alarm.caf', // Custom alarm sound for iOS
+      presentSound: playSound,
+      sound: playSound ? 'alarm.caf' : null, // Custom alarm sound for iOS or null if sound disabled
       categoryIdentifier: 'MEDICATION_REMINDER',
     );
 
@@ -353,6 +354,7 @@ class NotificationsService {
     required String body,
     required TimeOfDay time,
     String? medicationId,
+    bool playSound = true,
   }) async {
     await initialize();
 
@@ -385,6 +387,7 @@ class NotificationsService {
       scheduledTime: scheduledDate,
       medicationId: medicationId,
       useRecurring: false, // First notification is exact
+      playSound: playSound,
     );
     
     // Schedule recurring notification starting from tomorrow
@@ -396,6 +399,7 @@ class NotificationsService {
       scheduledTime: tomorrowDate,
       medicationId: medicationId,
       useRecurring: true, // Recurring from tomorrow
+      playSound: playSound,
     );
   }
 

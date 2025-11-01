@@ -45,7 +45,7 @@ class EmergencyScreen extends ConsumerWidget {
                     children: [
                       IconButton(
                         icon: const Icon(AppIcons.arrowLeft, color: AppTheme.white),
-                        onPressed: () => context.pop(),
+                        onPressed: () => context.safePop(),
                         padding: EdgeInsets.zero,
                         constraints: const BoxConstraints(),
                       ),

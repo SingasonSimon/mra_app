@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../../utils/navigation_helper.dart';
 import '../providers/auth_providers.dart';
 import '../../../app/theme/app_theme.dart';
 
@@ -103,7 +104,7 @@ class _ModernSignUpScreenState extends ConsumerState<ModernSignUpScreen> {
                   // Back Button
                   IconButton(
                     icon: const Icon(Icons.arrow_back, color: Colors.white),
-                    onPressed: () => context.pop(),
+                    onPressed: () => context.safePop(),
                     padding: EdgeInsets.zero,
                     constraints: const BoxConstraints(),
                   ),
@@ -372,7 +373,7 @@ class _ModernSignUpScreenState extends ConsumerState<ModernSignUpScreen> {
                               ),
                         ),
                         TextButton(
-                          onPressed: () => context.pop(),
+                          onPressed: () => context.safePop(),
                           style: TextButton.styleFrom(
                             padding: EdgeInsets.zero,
                             minimumSize: Size.zero,

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../providers/appointment_providers.dart';
 import '../../../core/models/appointment.dart';
+import '../../../utils/navigation_helper.dart';
 
 class AppointmentListScreen extends ConsumerStatefulWidget {
   const AppointmentListScreen({super.key});
@@ -20,6 +21,10 @@ class _AppointmentListScreenState extends ConsumerState<AppointmentListScreen> {
 
     return Scaffold(
       appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => context.safePop(),
+        ),
         title: const Text('Appointments'),
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(48),

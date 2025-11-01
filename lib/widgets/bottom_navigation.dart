@@ -29,19 +29,27 @@ class BottomNavigation extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    
     return Container(
       decoration: BoxDecoration(
-        color: AppTheme.white,
+        color: isDark ? const Color(0xFF1F2937) : AppTheme.white,
         border: Border(
-          top: BorderSide(color: AppTheme.gray200, width: 1),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, -2),
+          top: BorderSide(
+            color: isDark ? AppTheme.gray700 : AppTheme.gray200,
+            width: 1,
           ),
-        ],
+        ),
+        boxShadow: isDark
+            ? []
+            : [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.05),
+                  blurRadius: 10,
+                  offset: const Offset(0, -2),
+                ),
+              ],
       ),
       child: SafeArea(
         child: Container(
@@ -97,6 +105,9 @@ class _NavItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    
     return Expanded(
       child: InkWell(
         onTap: onTap,
@@ -106,7 +117,9 @@ class _NavItem extends StatelessWidget {
           children: [
             Icon(
               icon,
-              color: isSelected ? AppTheme.teal600 : AppTheme.gray400,
+              color: isSelected
+                  ? AppTheme.teal500
+                  : (isDark ? AppTheme.gray400 : AppTheme.gray500),
               size: 24,
             ),
             const SizedBox(height: 4),
@@ -114,7 +127,9 @@ class _NavItem extends StatelessWidget {
               label,
               style: TextStyle(
                 fontSize: 12,
-                color: isSelected ? AppTheme.teal600 : AppTheme.gray500,
+                color: isSelected
+                    ? AppTheme.teal500
+                    : (isDark ? AppTheme.gray400 : AppTheme.gray500),
                 fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
               ),
             ),

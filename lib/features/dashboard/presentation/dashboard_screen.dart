@@ -8,9 +8,7 @@ import '../../../widgets/bottom_navigation.dart';
 import '../../../app/theme/app_theme.dart';
 import '../../../core/models/medication.dart';
 import '../../../core/models/med_log.dart';
-import '../../logs/repository/logs_repository.dart';
 import '../../logs/providers/logs_providers.dart';
-import '../../medication/providers/medication_providers.dart';
 
 class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
@@ -19,7 +17,34 @@ class DashboardScreen extends ConsumerStatefulWidget {
   ConsumerState<DashboardScreen> createState() => _DashboardScreenState();
 }
 
-class _DashboardScreenState extends ConsumerState<DashboardScreen> {
+class _DashboardScreenState extends ConsumerState<DashboardScreen> with SingleTickerProviderStateMixin {
+  late AnimationController _animationController;
+  late Animation<double> _fadeAnimation;
+  late Animation<Offset> _slideAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _animationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 800),
+    );
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _animationController, curve: Curves.easeIn),
+    );
+    _slideAnimation = Tween<Offset>(
+      begin: const Offset(0, 0.2),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(parent: _animationController, curve: Curves.easeOutCubic));
+    _animationController.forward();
+  }
+
+  @override
+  void dispose() {
+    _animationController.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     final profileAsync = ref.watch(userProfileProvider);
@@ -93,7 +118,11 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   ),
                   const SizedBox(height: 24),
                   // Today's Adherence Card
-                  Container(
+                  FadeTransition(
+                    opacity: _fadeAnimation,
+                    child: SlideTransition(
+                      position: _slideAnimation,
+                      child: Container(
                     padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
                       color: AppTheme.white.withValues(alpha: 0.2),
@@ -170,17 +199,23 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                         style: TextStyle(color: Colors.white),
                       ),
                     ),
+                      ),
+                    ),
                   ),
                 ],
               ),
             ),
             // Main Content
             Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
+              child: FadeTransition(
+                opacity: _fadeAnimation,
+                child: SlideTransition(
+                  position: _slideAnimation,
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.all(20),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
                     // Next Dose Reminder Card
                     nextDoseAsyncValue.when(
                       data: (nextDose) {
@@ -345,11 +380,15 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                       loading: () => const Center(child: CircularProgressIndicator()),
                       error: (_, __) => const SizedBox.shrink(),
                     ),
-                  ],
+                      ],
+                    ),
+                  ),
+                    ),
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
       bottomNavigationBar: const BottomNavigation(currentIndex: 0),
@@ -444,7 +483,7 @@ class _NextDoseCountdownState extends State<_NextDoseCountdown> {
   }
 }
 
-class _QuickActionButton extends StatelessWidget {
+class _QuickActionButton extends StatefulWidget {
   final IconData icon;
   final String label;
   final Color color;
@@ -458,37 +497,74 @@ class _QuickActionButton extends StatelessWidget {
   });
 
   @override
+  State<_QuickActionButton> createState() => _QuickActionButtonState();
+}
+
+class _QuickActionButtonState extends State<_QuickActionButton> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _scaleAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 150),
+    );
+    _scaleAnimation = Tween<double>(begin: 1.0, end: 0.95).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
-        decoration: BoxDecoration(
-          color: color,
+    return GestureDetector(
+      onTapDown: (_) => _controller.forward(),
+      onTapUp: (_) {
+        _controller.reverse();
+        widget.onTap();
+      },
+      onTapCancel: () => _controller.reverse(),
+      child: ScaleTransition(
+        scale: _scaleAnimation,
+        child: InkWell(
+          onTap: widget.onTap,
           borderRadius: BorderRadius.circular(12),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, color: Colors.white, size: 24),
-            const SizedBox(height: 8),
-            Text(
-              label,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-              ),
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+            decoration: BoxDecoration(
+              color: widget.color,
+              borderRadius: BorderRadius.circular(12),
             ),
-          ],
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(widget.icon, color: Colors.white, size: 24),
+                const SizedBox(height: 8),
+                Text(
+                  widget.label,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );
   }
 }
 
-class _MedicationCard extends ConsumerWidget {
+class _MedicationCard extends ConsumerStatefulWidget {
   final Medication medication;
   final DateTime scheduledTime;
   final MedEventStatus? status;
@@ -501,10 +577,21 @@ class _MedicationCard extends ConsumerWidget {
     required this.isDark,
   });
 
-  // Check if medication is recurring (no end date or frequency is daily)
-  bool get _isRecurring => medication.endDate == null || medication.frequency.toLowerCase().contains('daily');
+  @override
+  ConsumerState<_MedicationCard> createState() => _MedicationCardState();
+}
 
-  Future<void> _markAsTaken(BuildContext context, WidgetRef ref) async {
+class _MedicationCardState extends ConsumerState<_MedicationCard> {
+  bool _isLoading = false;
+
+  // Check if medication is recurring (no end date or frequency is daily)
+  bool get _isRecurring => widget.medication.endDate == null || widget.medication.frequency.toLowerCase().contains('daily');
+
+  Future<void> _markAsTaken() async {
+    if (_isLoading) return;
+
+    setState(() => _isLoading = true);
+
     try {
       final logsRepo = ref.read(logsRepositoryProvider);
       final now = DateTime.now();
@@ -512,13 +599,13 @@ class _MedicationCard extends ConsumerWidget {
         now.year,
         now.month,
         now.day,
-        scheduledTime.hour,
-        scheduledTime.minute,
+        widget.scheduledTime.hour,
+        widget.scheduledTime.minute,
       );
 
       final log = MedLog(
         id: '',
-        medicationId: medication.id,
+        medicationId: widget.medication.id,
         timestamp: now,
         status: MedEventStatus.taken,
         scheduledDoseTime: scheduledDateTime,
@@ -526,7 +613,12 @@ class _MedicationCard extends ConsumerWidget {
 
       await logsRepo.logMedicationEvent(log);
 
-      if (context.mounted) {
+      // Invalidate providers to refresh the UI
+      ref.invalidate(todayMedicationsProvider);
+      ref.invalidate(todayAdherenceProvider);
+      ref.invalidate(nextDoseProvider);
+
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Medication marked as taken'),
@@ -535,7 +627,7 @@ class _MedicationCard extends ConsumerWidget {
         );
       }
     } catch (e) {
-      if (context.mounted) {
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Error: ${e.toString()}'),
@@ -543,24 +635,28 @@ class _MedicationCard extends ConsumerWidget {
           ),
         );
       }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final localizations = MaterialLocalizations.of(context);
     final use24Hour = MediaQuery.of(context).alwaysUse24HourFormat;
-    final timeOfDay = TimeOfDay.fromDateTime(scheduledTime);
+    final timeOfDay = TimeOfDay.fromDateTime(widget.scheduledTime);
     final formattedTime = localizations.formatTimeOfDay(timeOfDay, alwaysUse24HourFormat: use24Hour);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1F2937) : AppTheme.white,
+        color: widget.isDark ? const Color(0xFF1F2937) : AppTheme.white,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: isDark ? AppTheme.gray700 : AppTheme.gray200,
+          color: widget.isDark ? AppTheme.gray700 : AppTheme.gray200,
           width: 1,
         ),
       ),
@@ -569,7 +665,7 @@ class _MedicationCard extends ConsumerWidget {
           Icon(
             AppIcons.clock,
             size: 20,
-            color: isDark ? AppTheme.gray400 : AppTheme.gray600,
+            color: widget.isDark ? AppTheme.gray400 : AppTheme.gray600,
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -580,11 +676,11 @@ class _MedicationCard extends ConsumerWidget {
                   children: [
                     Flexible(
                       child: Text(
-                        medication.name,
+                        widget.medication.name,
                         style: TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.w600,
-                          color: isDark ? AppTheme.white : AppTheme.gray900,
+                          color: widget.isDark ? AppTheme.white : AppTheme.gray900,
                         ),
                       ),
                     ),
@@ -593,17 +689,17 @@ class _MedicationCard extends ConsumerWidget {
                       Icon(
                         Icons.repeat,
                         size: 14,
-                        color: isDark ? AppTheme.teal500 : AppTheme.teal600,
+                        color: widget.isDark ? AppTheme.teal500 : AppTheme.teal600,
                       ),
                     ],
                   ],
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  '${medication.dosage} • $formattedTime',
+                  '${widget.medication.dosage} • $formattedTime',
                   style: TextStyle(
                     fontSize: 13,
-                    color: isDark
+                    color: widget.isDark
                         ? AppTheme.white.withValues(alpha: 0.6)
                         : AppTheme.gray600,
                   ),
@@ -611,9 +707,9 @@ class _MedicationCard extends ConsumerWidget {
               ],
             ),
           ),
-          if (status != MedEventStatus.taken)
+          if (widget.status != MedEventStatus.taken)
             TextButton(
-              onPressed: () => _markAsTaken(context, ref),
+              onPressed: _isLoading ? null : _markAsTaken,
               style: TextButton.styleFrom(
                 backgroundColor: AppTheme.blue500,
                 foregroundColor: Colors.white,
@@ -621,13 +717,23 @@ class _MedicationCard extends ConsumerWidget {
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(8),
                 ),
+                minimumSize: const Size(100, 36),
               ),
-              child: const Text(
-                'Mark Taken',
-                style: TextStyle(fontSize: 12),
-              ),
+              child: _isLoading
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                      ),
+                    )
+                  : const Text(
+                      'Mark Taken',
+                      style: TextStyle(fontSize: 12),
+                    ),
             ),
-          if (status == MedEventStatus.taken)
+          if (widget.status == MedEventStatus.taken)
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(

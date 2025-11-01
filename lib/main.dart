@@ -48,7 +48,9 @@ class MraApp extends ConsumerWidget {
             data: MediaQuery.of(context).copyWith(
               textScaler: TextScaler.linear(largeTextMode ? 1.3 : 1.0),
             ),
-            child: child!,
+            child: ScaffoldMessenger(
+              child: child!,
+            ),
           ),
         );
       },

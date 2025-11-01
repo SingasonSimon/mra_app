@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../app/theme/app_theme.dart';
+import '../../../utils/navigation_helper.dart';
 
 class PrivacyDataScreen extends ConsumerWidget {
   const PrivacyDataScreen({super.key});
@@ -13,6 +14,10 @@ class PrivacyDataScreen extends ConsumerWidget {
       appBar: AppBar(
         backgroundColor: AppTheme.primary,
         foregroundColor: Colors.white,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () => context.safePop(),
+        ),
         title: const Text(
           'Privacy & Data',
           style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),

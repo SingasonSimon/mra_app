@@ -68,11 +68,53 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> with SingleTicker
             }
           }
           
-          // Count taken doses
-          final takenDoses = logs.where((log) => 
-            log.timestamp.isAfter(weekAgo) && 
-            log.status == MedEventStatus.taken
-          ).length;
+          // Count taken doses - match with scheduled times
+          int takenDoses = 0;
+          for (final med in activeMeds) {
+            for (int day = 0; day < 7; day++) {
+              final date = weekAgo.add(Duration(days: day));
+              final dayStart = DateTime(date.year, date.month, date.day);
+              final dayEnd = dayStart.add(const Duration(days: 1));
+              
+              // Check if medication is active on this date
+              if (med.startDate.isBefore(dayEnd) && (med.endDate == null || med.endDate!.isAfter(dayStart))) {
+                // For each scheduled time, check if there's a taken log
+                for (final scheduledTime in med.timesPerDay) {
+                  final scheduledDateTime = DateTime(
+                    date.year,
+                    date.month,
+                    date.day,
+                    scheduledTime.hour,
+                    scheduledTime.minute,
+                  );
+                  
+                  // Check if there's a log for this scheduled time
+                  final hasLog = logs.any((log) =>
+                      log.medicationId == med.id &&
+                      log.status == MedEventStatus.taken &&
+                      log.timestamp.isAfter(dayStart) &&
+                      log.timestamp.isBefore(dayEnd) &&
+                      log.scheduledDoseTime.year == scheduledDateTime.year &&
+                      log.scheduledDoseTime.month == scheduledDateTime.month &&
+                      log.scheduledDoseTime.day == scheduledDateTime.day &&
+                      log.scheduledDoseTime.hour == scheduledDateTime.hour &&
+                      log.scheduledDoseTime.minute == scheduledDateTime.minute);
+                  
+                  if (hasLog) {
+                    takenDoses++;
+                  }
+                }
+              }
+            }
+          }
+          
+          // Fallback: if matching didn't work, use simple count (less accurate)
+          if (takenDoses == 0) {
+            takenDoses = logs.where((log) => 
+              log.timestamp.isAfter(weekAgo) && 
+              log.status == MedEventStatus.taken
+            ).length;
+          }
           
           final percentage = expectedDoses > 0 ? (takenDoses / expectedDoses * 100).round() : 0;
           
@@ -89,11 +131,51 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> with SingleTicker
               }
             }
           }
-          final lastWeekTaken = logs.where((log) => 
-            log.timestamp.isAfter(twoWeeksAgo) && 
-            log.timestamp.isBefore(weekAgo) &&
-            log.status == MedEventStatus.taken
-          ).length;
+          // Calculate last week taken doses with proper matching
+          int lastWeekTaken = 0;
+          for (final med in activeMeds) {
+            for (int day = 0; day < 7; day++) {
+              final date = twoWeeksAgo.add(Duration(days: day));
+              final dayStart = DateTime(date.year, date.month, date.day);
+              final dayEnd = dayStart.add(const Duration(days: 1));
+              
+              if (med.startDate.isBefore(dayEnd) && (med.endDate == null || med.endDate!.isAfter(dayStart))) {
+                for (final scheduledTime in med.timesPerDay) {
+                  final scheduledDateTime = DateTime(
+                    date.year,
+                    date.month,
+                    date.day,
+                    scheduledTime.hour,
+                    scheduledTime.minute,
+                  );
+                  
+                  final hasLog = logs.any((log) =>
+                      log.medicationId == med.id &&
+                      log.status == MedEventStatus.taken &&
+                      log.timestamp.isAfter(dayStart) &&
+                      log.timestamp.isBefore(dayEnd) &&
+                      log.scheduledDoseTime.year == scheduledDateTime.year &&
+                      log.scheduledDoseTime.month == scheduledDateTime.month &&
+                      log.scheduledDoseTime.day == scheduledDateTime.day &&
+                      log.scheduledDoseTime.hour == scheduledDateTime.hour &&
+                      log.scheduledDoseTime.minute == scheduledDateTime.minute);
+                  
+                  if (hasLog) {
+                    lastWeekTaken++;
+                  }
+                }
+              }
+            }
+          }
+          
+          // Fallback
+          if (lastWeekTaken == 0) {
+            lastWeekTaken = logs.where((log) => 
+              log.timestamp.isAfter(twoWeeksAgo) && 
+              log.timestamp.isBefore(weekAgo) &&
+              log.status == MedEventStatus.taken
+            ).length;
+          }
           final lastWeekPercentage = lastWeekExpected > 0 ? (lastWeekTaken / lastWeekExpected * 100).round() : 0;
           
           return {'percentage': percentage, 'lastWeek': lastWeekPercentage};
@@ -111,20 +193,21 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> with SingleTicker
         final today = DateTime(now.year, now.month, now.day);
         
         // Start from today and work backwards
+        // Streak continues as long as each day has at least one taken dose
         for (int i = 0; i < 365; i++) {
           final date = today.subtract(Duration(days: i));
+          final dayStart = DateTime(date.year, date.month, date.day);
+          final dayEnd = dayStart.add(const Duration(days: 1));
+          
           final dayLogs = logs.where((log) => 
-            log.timestamp.year == date.year &&
-            log.timestamp.month == date.month &&
-            log.timestamp.day == date.day &&
+            log.timestamp.isAfter(dayStart) &&
+            log.timestamp.isBefore(dayEnd) &&
             log.status == MedEventStatus.taken
           ).toList();
           
-          if (dayLogs.isEmpty && i == 0) {
-            // Today has no logs, so streak is 0
-            break;
-          } else if (dayLogs.isEmpty) {
-            // Found a day with no taken doses, streak ends
+          if (dayLogs.isEmpty) {
+            // Found a day with no taken doses - streak ends here
+            // If it's today (i == 0), streak is 0, otherwise streak is i
             break;
           } else {
             streak++;
@@ -401,9 +484,10 @@ class _ChartView extends ConsumerWidget {
                 const SizedBox(height: 24),
                 SizedBox(
                   height: 200,
-            child: logsAsync.when(
-                    data: (logs) => medicationsAsync.maybeWhen(
-                      data: (medications) {
+                  child: logsAsync.when(
+                    data: (logs) {
+                      return medicationsAsync.when(
+                        data: (medications) {
                         // Calculate daily adherence for this week
                         final currentNow = DateTime.now();
                         final weekData = List.generate(7, (index) {
@@ -467,51 +551,52 @@ class _ChartView extends ConsumerWidget {
                           );
                         }
                         
-                        return _SimpleLineChart(data: weekData, isDark: isDark);
-                      },
-                      orElse: () => Padding(
-                        padding: const EdgeInsets.all(32),
-                        child: Center(
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              CircularProgressIndicator(
-                                color: AppTheme.teal500,
-                              ),
-                              const SizedBox(height: 16),
-                              Text(
-                                'Loading medications...',
-                                style: TextStyle(
-                                  color: isDark ? AppTheme.white : AppTheme.gray900,
+                          return _SimpleLineChart(data: weekData, isDark: isDark);
+                        },
+                        loading: () => Padding(
+                          padding: const EdgeInsets.all(32),
+                          child: Center(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                CircularProgressIndicator(
+                                  color: AppTheme.teal500,
                                 ),
-                              ),
-                            ],
+                                const SizedBox(height: 16),
+                                Text(
+                                  'Loading medications...',
+                                  style: TextStyle(
+                                    color: isDark ? AppTheme.white : AppTheme.gray900,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
-                      ),
-                      error: (error, stack) {
-                        debugPrint('Error loading medications: $error');
-                        return Center(
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                AppIcons.alertCircle,
-                                size: 48,
-                                color: AppTheme.red500,
-                              ),
-                              const SizedBox(height: 12),
-                              Text(
-                                'Error loading medications',
-                                style: TextStyle(
-                                  color: isDark ? AppTheme.white : AppTheme.gray900,
+                        error: (error, stack) {
+                          debugPrint('Error loading medications: $error');
+                          return Center(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  AppIcons.alertCircle,
+                                  size: 48,
+                                  color: AppTheme.red500,
                                 ),
-                              ),
-                            ],
-                          ),
-                        );
-                      },
-                    ),
+                                const SizedBox(height: 12),
+                                Text(
+                                  'Error loading medications',
+                                  style: TextStyle(
+                                    color: isDark ? AppTheme.white : AppTheme.gray900,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                      );
+                    },
                     loading: () => Padding(
                       padding: const EdgeInsets.all(32),
                       child: Center(

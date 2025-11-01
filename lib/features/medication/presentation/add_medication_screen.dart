@@ -7,6 +7,7 @@ import '../providers/medication_providers.dart';
 import '../../../di/providers.dart';
 import '../../../features/logs/repository/logs_repository.dart';
 import '../../../app/theme/app_theme.dart';
+import '../../../utils/navigation_helper.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 
@@ -40,9 +41,11 @@ class _AddMedicationScreenState extends ConsumerState<AddMedicationScreen> {
   bool _soundAlert = true;
   bool _refillReminder = true;
   File? _prescriptionImage;
+  String? _existingPrescriptionImageUrl; // URL from existing medication when editing
 
   final List<String> _units = ['mg', 'ml', 'tablet', 'capsule', 'drop', 'unit'];
   final List<String> _frequencies = ['Once daily', 'Twice daily', 'Three times daily', 'Four times daily', 'As needed'];
+  bool _isSaving = false;
 
   @override
   void initState() {
@@ -63,6 +66,15 @@ class _AddMedicationScreenState extends ConsumerState<AddMedicationScreen> {
       _refillThresholdController.text = widget.medication!.refillThreshold?.toString() ?? '';
       _refillDate = widget.medication!.refillDate;
       _manualRefillDate = widget.medication!.manualRefillDate;
+      
+      // Store existing prescription image URL for display
+      _existingPrescriptionImageUrl = widget.medication!.prescriptionImageUrl;
+      
+      // Load prescription image URL if exists
+      if (widget.medication!.prescriptionImageUrl != null && widget.medication!.prescriptionImageUrl!.isNotEmpty) {
+        // Note: We can't load the image directly into File, but we can store the URL
+        // The image will be loaded later when displaying
+      }
       
       // Calculate duration
       if (_endDate != null && _startDate != null) {
@@ -155,6 +167,11 @@ class _AddMedicationScreenState extends ConsumerState<AddMedicationScreen> {
         else if (_selectedTimes.length == 3) _selectedFrequency = 'Three times daily';
         else if (_selectedTimes.length >= 4) _selectedFrequency = 'Four times daily';
       });
+      
+      // Recalculate refill date when times change (if not manual)
+      if (!_manualRefillDate) {
+        _calculateRefillDate();
+      }
     }
   }
 
@@ -211,6 +228,11 @@ class _AddMedicationScreenState extends ConsumerState<AddMedicationScreen> {
       else if (_selectedTimes.length == 3) _selectedFrequency = 'Three times daily';
       else if (_selectedTimes.length >= 4) _selectedFrequency = 'Four times daily';
     });
+    
+    // Recalculate refill date when times change (if not manual)
+    if (!_manualRefillDate) {
+      _calculateRefillDate();
+    }
   }
 
   String _getDisplayTime(TimeOfDay time) {
@@ -220,6 +242,8 @@ class _AddMedicationScreenState extends ConsumerState<AddMedicationScreen> {
   }
 
   Future<void> _saveMedication() async {
+    if (_isSaving) return;
+    
     if (!_formKey.currentState!.validate()) return;
     if (_selectedTimes.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -233,8 +257,31 @@ class _AddMedicationScreenState extends ConsumerState<AddMedicationScreen> {
       );
       return;
     }
+    if (_manualRefillDate && _refillDate == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please select a refill date or disable manual mode')),
+      );
+      return;
+    }
+
+    setState(() => _isSaving = true);
 
     try {
+      final repository = ref.read(medicationRepositoryProvider);
+      final notificationsService = ref.read(notificationsServiceProvider);
+      final storageService = ref.read(storageServiceProvider);
+      final logsRepository = LogsRepository();
+      final refillService = RefillService(logsRepository);
+
+      // Preserve existing image URL if editing and no new image selected and not removed
+      String? initialPrescriptionImageUrl;
+      if (widget.medication != null && _prescriptionImage == null && _existingPrescriptionImageUrl != null) {
+        initialPrescriptionImageUrl = _existingPrescriptionImageUrl;
+      } else if (_prescriptionImage == null && _existingPrescriptionImageUrl == null) {
+        // User explicitly removed the image
+        initialPrescriptionImageUrl = null;
+      }
+
       final medication = Medication(
         id: widget.medication?.id ?? '',
         name: _nameController.text.trim(),
@@ -249,12 +296,8 @@ class _AddMedicationScreenState extends ConsumerState<AddMedicationScreen> {
             : int.tryParse(_refillThresholdController.text.trim()),
         refillDate: _refillDate,
         manualRefillDate: _manualRefillDate,
+        prescriptionImageUrl: initialPrescriptionImageUrl,
       );
-
-      final repository = ref.read(medicationRepositoryProvider);
-      final notificationsService = ref.read(notificationsServiceProvider);
-      final logsRepository = LogsRepository();
-      final refillService = RefillService(logsRepository);
 
       Medication finalMedication = medication;
       if (!_manualRefillDate && medication.refillThreshold != null) {
@@ -271,16 +314,85 @@ class _AddMedicationScreenState extends ConsumerState<AddMedicationScreen> {
           refillThreshold: medication.refillThreshold,
           refillDate: calculatedDate,
           manualRefillDate: false,
+          prescriptionImageUrl: medication.prescriptionImageUrl,
         );
       }
 
       String medicationId;
+      String? oldImageUrl;
+      
+      // If editing, get the old image URL for potential deletion and cancel old notifications
       if (widget.medication != null) {
         medicationId = widget.medication!.id;
+        oldImageUrl = widget.medication!.prescriptionImageUrl;
         await repository.updateMedication(medicationId, finalMedication);
-        await notificationsService.cancelRefillReminder(medicationId.hashCode);
+        
+        // Cancel all old notifications for this medication
+        // Cancel dose reminders (one for each scheduled time)
+        for (int i = 0; i < widget.medication!.timesPerDay.length; i++) {
+          await notificationsService.cancelReminder(medicationId.hashCode + i);
+          // Also cancel recurring notifications
+          await notificationsService.cancelReminder(medicationId.hashCode + i + 100000);
+        }
+        // Cancel refill reminder
+        await notificationsService.cancelRefillReminder(medicationId.hashCode + 10000);
       } else {
         medicationId = await repository.addMedication(finalMedication);
+      }
+
+      // Handle prescription image upload after medication is saved (so we have the ID)
+      if (_prescriptionImage != null) {
+        try {
+          // Upload the image
+          final prescriptionImageUrl = await storageService.uploadPrescriptionImage(
+            imageFile: _prescriptionImage!,
+            medicationId: medicationId,
+          );
+
+          // Update medication with image URL
+          final updatedMedication = Medication(
+            id: finalMedication.id,
+            name: finalMedication.name,
+            dosage: finalMedication.dosage,
+            timesPerDay: finalMedication.timesPerDay,
+            frequency: finalMedication.frequency,
+            startDate: finalMedication.startDate,
+            endDate: finalMedication.endDate,
+            notes: finalMedication.notes,
+            refillThreshold: finalMedication.refillThreshold,
+            refillDate: finalMedication.refillDate,
+            manualRefillDate: finalMedication.manualRefillDate,
+            prescriptionImageUrl: prescriptionImageUrl,
+          );
+          
+          await repository.updateMedication(medicationId, updatedMedication);
+
+          // If editing and old image exists, delete it
+          if (oldImageUrl != null && oldImageUrl.isNotEmpty && oldImageUrl != prescriptionImageUrl) {
+            try {
+              await storageService.deletePrescriptionImage(oldImageUrl);
+            } catch (e) {
+              // Non-critical error, continue
+              debugPrint('Failed to delete old prescription image: $e');
+            }
+          }
+          
+          // Clear existing image URL since we have a new one
+          setState(() {
+            _existingPrescriptionImageUrl = null;
+          });
+        } catch (e) {
+          // Image upload failed, but medication is already saved
+          debugPrint('Failed to upload prescription image: $e');
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Medication saved but image upload failed: ${e.toString()}'),
+                duration: const Duration(seconds: 4),
+              ),
+            );
+          }
+        }
       }
 
       // Schedule notifications if enabled (errors are handled internally)
@@ -293,6 +405,7 @@ class _AddMedicationScreenState extends ConsumerState<AddMedicationScreen> {
               body: 'Time to take ${finalMedication.name} (${finalMedication.dosage})',
               time: _selectedTimes[i],
               medicationId: medicationId,
+              playSound: _soundAlert,
             );
           }
         } catch (e) {
@@ -314,7 +427,7 @@ class _AddMedicationScreenState extends ConsumerState<AddMedicationScreen> {
       }
 
       if (mounted) {
-        context.pop();
+        context.safePop();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(widget.medication != null
@@ -328,6 +441,10 @@ class _AddMedicationScreenState extends ConsumerState<AddMedicationScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error: ${e.toString()}')),
         );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isSaving = false);
       }
     }
   }
@@ -360,7 +477,7 @@ class _AddMedicationScreenState extends ConsumerState<AddMedicationScreen> {
                 children: [
                   IconButton(
                     icon: const Icon(AppIcons.arrowLeft, color: AppTheme.white),
-                    onPressed: () => context.pop(),
+                    onPressed: () => context.safePop(),
                     padding: EdgeInsets.zero,
                     constraints: const BoxConstraints(),
                   ),
@@ -559,7 +676,49 @@ class _AddMedicationScreenState extends ConsumerState<AddMedicationScreen> {
                         );
                       }).toList(),
                       onChanged: (value) {
-                        setState(() => _selectedFrequency = value ?? 'Once daily');
+                        if (value == null) return;
+                        
+                        setState(() {
+                          _selectedFrequency = value;
+                          
+                          // Auto-populate times based on frequency (if times are empty or user wants to reset)
+                          if (value != 'As needed') {
+                            // Suggest common times based on frequency
+                            final suggestedTimes = <TimeOfDay>[];
+                            
+                            if (value == 'Once daily') {
+                              suggestedTimes.add(const TimeOfDay(hour: 9, minute: 0)); // 9:00 AM
+                            } else if (value == 'Twice daily') {
+                              suggestedTimes.add(const TimeOfDay(hour: 9, minute: 0)); // 9:00 AM
+                              suggestedTimes.add(const TimeOfDay(hour: 21, minute: 0)); // 9:00 PM
+                            } else if (value == 'Three times daily') {
+                              suggestedTimes.add(const TimeOfDay(hour: 8, minute: 0)); // 8:00 AM
+                              suggestedTimes.add(const TimeOfDay(hour: 14, minute: 0)); // 2:00 PM
+                              suggestedTimes.add(const TimeOfDay(hour: 20, minute: 0)); // 8:00 PM
+                            } else if (value == 'Four times daily') {
+                              suggestedTimes.add(const TimeOfDay(hour: 8, minute: 0)); // 8:00 AM
+                              suggestedTimes.add(const TimeOfDay(hour: 12, minute: 0)); // 12:00 PM
+                              suggestedTimes.add(const TimeOfDay(hour: 16, minute: 0)); // 4:00 PM
+                              suggestedTimes.add(const TimeOfDay(hour: 20, minute: 0)); // 8:00 PM
+                            }
+                            
+                            // Only auto-populate if no times are set yet
+                            if (_selectedTimes.isEmpty) {
+                              _selectedTimes.addAll(suggestedTimes);
+                            } else {
+                              // Update frequency label only, keep existing times
+                              // The frequency display will reflect the actual count
+                            }
+                          } else {
+                            // "As needed" - clear times but allow manual selection
+                            // Don't auto-clear, let user manage manually
+                          }
+                        });
+                        
+                        // Recalculate refill date when frequency changes (if not manual)
+                        if (!_manualRefillDate) {
+                          _calculateRefillDate();
+                        }
                       },
                       validator: (value) {
                         if (value == null || value.isEmpty) {
@@ -709,6 +868,191 @@ class _AddMedicationScreenState extends ConsumerState<AddMedicationScreen> {
                       maxLines: 3,
                     ),
                     const SizedBox(height: 24),
+                    // Refill Settings
+                    Text(
+                      'Refill Settings',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: isDark ? AppTheme.white : AppTheme.gray900,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    // Refill Threshold
+                    TextFormField(
+                      controller: _refillThresholdController,
+                      style: TextStyle(
+                        color: isDark ? AppTheme.white : AppTheme.gray900,
+                        fontSize: 15,
+                      ),
+                      decoration: InputDecoration(
+                        labelText: 'Refill Threshold (number of doses)',
+                        hintText: 'e.g., 30',
+                        hintStyle: TextStyle(
+                          color: isDark ? AppTheme.gray400 : AppTheme.gray500,
+                          fontSize: 14,
+                        ),
+                        labelStyle: TextStyle(
+                          color: isDark ? AppTheme.gray400 : AppTheme.gray600,
+                          fontSize: 14,
+                        ),
+                        prefixIcon: Icon(
+                          Icons.inventory_2_rounded,
+                          color: isDark ? AppTheme.gray400 : AppTheme.gray500,
+                        ),
+                        filled: true,
+                        fillColor: isDark
+                            ? AppTheme.white.withValues(alpha: 0.1)
+                            : AppTheme.gray100,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide.none,
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                      ),
+                      keyboardType: TextInputType.number,
+                      onChanged: (value) {
+                        // Recalculate refill date when threshold changes
+                        if (!_manualRefillDate) {
+                          _calculateRefillDate();
+                        }
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    // Manual Refill Date Toggle
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Manual Refill Date',
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w500,
+                                  color: isDark ? AppTheme.white : AppTheme.gray900,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                'Override calculated refill date',
+                                style: TextStyle(
+                                  color: isDark
+                                      ? AppTheme.white.withValues(alpha: 0.6)
+                                      : AppTheme.gray600,
+                                  fontSize: 13,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Switch(
+                          value: _manualRefillDate,
+                          onChanged: (value) {
+                            setState(() {
+                              _manualRefillDate = value;
+                              if (!value) {
+                                // When disabling manual, recalculate
+                                _calculateRefillDate();
+                              }
+                            });
+                          },
+                        ),
+                      ],
+                    ),
+                    if (_manualRefillDate) ...[
+                      const SizedBox(height: 16),
+                      InkWell(
+                        onTap: () async {
+                          final date = await showDatePicker(
+                            context: context,
+                            initialDate: _refillDate ?? DateTime.now().add(const Duration(days: 30)),
+                            firstDate: DateTime.now(),
+                            lastDate: DateTime.now().add(const Duration(days: 3650)),
+                          );
+                          if (date != null) {
+                            setState(() {
+                              _refillDate = date;
+                            });
+                          }
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                          decoration: BoxDecoration(
+                            color: isDark
+                                ? AppTheme.white.withValues(alpha: 0.1)
+                                : AppTheme.gray100,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(
+                                AppIcons.calendar,
+                                color: isDark ? AppTheme.gray400 : AppTheme.gray500,
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Refill Date*',
+                                      style: TextStyle(
+                                        color: isDark ? AppTheme.gray400 : AppTheme.gray600,
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      _refillDate != null
+                                          ? '${_refillDate!.day}/${_refillDate!.month}/${_refillDate!.year}'
+                                          : 'Select refill date',
+                                      style: TextStyle(
+                                        color: _refillDate != null
+                                            ? (isDark ? AppTheme.white : AppTheme.gray900)
+                                            : (isDark ? AppTheme.gray400 : AppTheme.gray500),
+                                        fontSize: 15,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ] else if (_calculatedRefillDate != null) ...[
+                      const SizedBox(height: 16),
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: AppTheme.teal50,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.info_outline,
+                              color: AppTheme.teal600,
+                              size: 20,
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                'Calculated refill date: $_calculatedRefillDate',
+                                style: TextStyle(
+                                  color: AppTheme.teal700,
+                                  fontSize: 13,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: 24),
                     // Upload Prescription Photo
                     Text(
                       'Upload Prescription Photo',
@@ -760,7 +1104,63 @@ class _AddMedicationScreenState extends ConsumerState<AddMedicationScreen> {
                                   ),
                                 ],
                               )
-                            : Column(
+                            : _existingPrescriptionImageUrl != null && _existingPrescriptionImageUrl!.isNotEmpty
+                                ? Stack(
+                                    children: [
+                                      ClipRRect(
+                                        borderRadius: BorderRadius.circular(10),
+                                        child: Image.network(
+                                          _existingPrescriptionImageUrl!,
+                                          fit: BoxFit.cover,
+                                          width: double.infinity,
+                                          height: 120,
+                                          errorBuilder: (context, error, stackTrace) {
+                                            return Container(
+                                              height: 120,
+                                              color: isDark ? AppTheme.gray700 : AppTheme.gray200,
+                                              child: Center(
+                                                child: Icon(
+                                                  Icons.error_outline,
+                                                  color: isDark ? AppTheme.gray400 : AppTheme.gray500,
+                                                ),
+                                              ),
+                                            );
+                                          },
+                                          loadingBuilder: (context, child, loadingProgress) {
+                                            if (loadingProgress == null) return child;
+                                            return Container(
+                                              height: 120,
+                                              color: isDark ? AppTheme.gray700 : AppTheme.gray200,
+                                              child: Center(
+                                                child: CircularProgressIndicator(
+                                                  value: loadingProgress.expectedTotalBytes != null
+                                                      ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
+                                                      : null,
+                                                ),
+                                              ),
+                                            );
+                                          },
+                                        ),
+                                      ),
+                                      Positioned(
+                                        top: 8,
+                                        right: 8,
+                                        child: IconButton(
+                                          icon: const Icon(AppIcons.x, color: AppTheme.white),
+                                          onPressed: () {
+                                            setState(() {
+                                              _existingPrescriptionImageUrl = null;
+                                              _prescriptionImage = null;
+                                            });
+                                          },
+                                          style: IconButton.styleFrom(
+                                            backgroundColor: Colors.black54,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  )
+                                : Column(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
                                   Icon(
@@ -843,7 +1243,7 @@ class _AddMedicationScreenState extends ConsumerState<AddMedicationScreen> {
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
-                        onPressed: _saveMedication,
+                        onPressed: _isSaving ? null : _saveMedication,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppTheme.teal500,
                           foregroundColor: AppTheme.white,
@@ -852,14 +1252,24 @@ class _AddMedicationScreenState extends ConsumerState<AddMedicationScreen> {
                             borderRadius: BorderRadius.circular(12),
                           ),
                           elevation: 0,
+                          disabledBackgroundColor: AppTheme.teal500.withValues(alpha: 0.6),
                         ),
-                        child: const Text(
-                          'Save Medication',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
+                        child: _isSaving
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                ),
+                              )
+                            : const Text(
+                                'Save Medication',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
                       ),
                     ),
                   ],

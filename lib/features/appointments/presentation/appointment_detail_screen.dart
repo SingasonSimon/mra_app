@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../providers/appointment_providers.dart';
+import '../../../utils/navigation_helper.dart';
 
 class AppointmentDetailScreen extends ConsumerWidget {
   final String appointmentId;
@@ -26,6 +27,10 @@ class AppointmentDetailScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => context.safePop(),
+        ),
         title: const Text('Appointment Details'),
         actions: [
           appointmentAsync.when(
@@ -297,7 +302,7 @@ class AppointmentDetailScreen extends ConsumerWidget {
                           final repository = ref.read(appointmentRepositoryProvider);
                           await repository.deleteAppointment(appointment.id);
                           if (context.mounted) {
-                            context.pop();
+                            context.safePop();
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(content: Text('Appointment deleted')),
                             );

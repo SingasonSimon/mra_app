@@ -9,6 +9,7 @@ import '../core/services/local_storage.dart';
 import '../core/services/analytics_service.dart';
 import '../core/services/notifications_service.dart';
 import '../core/services/refill_service.dart';
+import '../core/services/storage_service.dart';
 import '../features/logs/repository/logs_repository.dart';
 
 final goRouterProvider = Provider<GoRouter>((ref) {
@@ -55,6 +56,10 @@ final logsRepositoryProvider = Provider<LogsRepository>((ref) {
 final refillServiceProvider = Provider<RefillService>((ref) {
   final logsRepository = ref.watch(logsRepositoryProvider);
   return RefillService(logsRepository);
+});
+
+final storageServiceProvider = Provider<StorageService>((ref) {
+  return StorageService();
 });
 
 
