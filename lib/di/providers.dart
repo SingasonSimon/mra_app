@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -7,6 +8,8 @@ import '../app/routing/app_router.dart';
 import '../core/services/local_storage.dart';
 import '../core/services/analytics_service.dart';
 import '../core/services/notifications_service.dart';
+import '../core/services/refill_service.dart';
+import '../features/logs/repository/logs_repository.dart';
 
 final goRouterProvider = Provider<GoRouter>((ref) {
   return appRouter;
@@ -37,6 +40,21 @@ final analyticsServiceProvider = Provider<AnalyticsService>((ref) {
 
 final notificationsServiceProvider = Provider<NotificationsService>((ref) {
   return NotificationsService();
+});
+
+final localeProvider = Provider<Locale>((ref) {
+  final prefsAsync = ref.watch(sharedPreferencesProvider);
+  final localeCode = prefsAsync.value?.getString('language') ?? 'en';
+  return Locale(localeCode);
+});
+
+final logsRepositoryProvider = Provider<LogsRepository>((ref) {
+  return LogsRepository();
+});
+
+final refillServiceProvider = Provider<RefillService>((ref) {
+  final logsRepository = ref.watch(logsRepositoryProvider);
+  return RefillService(logsRepository);
 });
 
 

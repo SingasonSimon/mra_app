@@ -46,19 +46,26 @@ class LogsRepository {
   Future<List<MedLog>> getLogsForMedication(String medicationId, {int? limit}) async {
     if (_userId.isEmpty) return [];
 
+    // Use where only, then sort in memory to avoid needing composite index
     Query query = _firestore
         .collection('users')
         .doc(_userId)
         .collection('medLogs')
-        .where('medicationId', isEqualTo: medicationId)
-        .orderBy('timestamp', descending: true);
-
-    if (limit != null) {
-      query = query.limit(limit);
-    }
+        .where('medicationId', isEqualTo: medicationId);
 
     final snapshot = await query.get();
-    return snapshot.docs.map((doc) => MedLog.fromMap(doc.id, doc.data() as Map<String, dynamic>)).toList();
+    var logs = snapshot.docs
+        .map((doc) => MedLog.fromMap(doc.id, doc.data() as Map<String, dynamic>))
+        .toList();
+    
+    // Sort by timestamp descending in memory
+    logs.sort((a, b) => b.timestamp.compareTo(a.timestamp));
+    
+    if (limit != null) {
+      logs = logs.take(limit).toList();
+    }
+    
+    return logs;
   }
 
   Future<Map<String, dynamic>> getAdherenceStats({

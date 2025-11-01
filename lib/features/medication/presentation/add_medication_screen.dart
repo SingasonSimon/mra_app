@@ -2,8 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/models/medication.dart';
+import '../../../core/services/refill_service.dart';
 import '../providers/medication_providers.dart';
 import '../../../di/providers.dart';
+import '../../../features/logs/repository/logs_repository.dart';
+import '../../../app/theme/app_theme.dart';
+import 'package:image_picker/image_picker.dart';
+import 'dart:io';
 
 class AddMedicationScreen extends ConsumerStatefulWidget {
   final Medication? medication;
@@ -19,24 +24,63 @@ class _AddMedicationScreenState extends ConsumerState<AddMedicationScreen> {
   final _nameController = TextEditingController();
   final _dosageController = TextEditingController();
   final _notesController = TextEditingController();
+  final _durationController = TextEditingController();
   final List<TimeOfDay> _selectedTimes = [];
   DateTime? _startDate;
   DateTime? _endDate;
-  int? _refillThreshold;
+  final _refillThresholdController = TextEditingController();
+  DateTime? _refillDate;
+  bool _manualRefillDate = false;
+  String? _calculatedRefillDate;
+  
+  // New fields for wireframe design
+  String _selectedUnit = 'mg';
+  String _selectedFrequency = 'Once daily';
+  bool _notificationsEnabled = true;
+  bool _soundAlert = true;
+  bool _refillReminder = true;
+  File? _prescriptionImage;
+
+  final List<String> _units = ['mg', 'ml', 'tablet', 'capsule', 'drop', 'unit'];
+  final List<String> _frequencies = ['Once daily', 'Twice daily', 'Three times daily', 'Four times daily', 'As needed'];
 
   @override
   void initState() {
     super.initState();
     if (widget.medication != null) {
       _nameController.text = widget.medication!.name;
-      _dosageController.text = widget.medication!.dosage;
+      final dosageParts = widget.medication!.dosage.split(' ');
+      if (dosageParts.length >= 2) {
+        _dosageController.text = dosageParts[0];
+        _selectedUnit = dosageParts.sublist(1).join(' ');
+      } else {
+        _dosageController.text = widget.medication!.dosage;
+      }
       _notesController.text = widget.medication!.notes ?? '';
       _selectedTimes.addAll(widget.medication!.timesPerDay);
       _startDate = widget.medication!.startDate;
       _endDate = widget.medication!.endDate;
-      _refillThreshold = widget.medication!.refillThreshold;
+      _refillThresholdController.text = widget.medication!.refillThreshold?.toString() ?? '';
+      _refillDate = widget.medication!.refillDate;
+      _manualRefillDate = widget.medication!.manualRefillDate;
+      
+      // Calculate duration
+      if (_endDate != null && _startDate != null) {
+        final days = _endDate!.difference(_startDate!).inDays;
+        _durationController.text = days.toString();
+      }
     } else {
       _startDate = DateTime.now();
+      _durationController.text = '30';
+    }
+    
+    // Set frequency based on timesPerDay count
+    if (widget.medication != null && widget.medication!.timesPerDay.isNotEmpty) {
+      final count = widget.medication!.timesPerDay.length;
+      if (count == 1) _selectedFrequency = 'Once daily';
+      else if (count == 2) _selectedFrequency = 'Twice daily';
+      else if (count == 3) _selectedFrequency = 'Three times daily';
+      else if (count >= 4) _selectedFrequency = 'Four times daily';
     }
   }
 
@@ -45,7 +89,51 @@ class _AddMedicationScreenState extends ConsumerState<AddMedicationScreen> {
     _nameController.dispose();
     _dosageController.dispose();
     _notesController.dispose();
+    _refillThresholdController.dispose();
+    _durationController.dispose();
     super.dispose();
+  }
+
+  Future<void> _calculateRefillDate() async {
+    if (_selectedTimes.isEmpty || _startDate == null) return;
+    
+    final thresholdText = _refillThresholdController.text.trim();
+    if (thresholdText.isEmpty) {
+      setState(() => _calculatedRefillDate = null);
+      return;
+    }
+
+    final threshold = int.tryParse(thresholdText);
+    if (threshold == null || threshold <= 0) {
+      setState(() => _calculatedRefillDate = null);
+      return;
+    }
+
+    final tempMedication = Medication(
+      id: widget.medication?.id ?? '',
+      name: _nameController.text.trim(),
+      dosage: '${_dosageController.text.trim()} $_selectedUnit',
+      timesPerDay: _selectedTimes,
+      frequency: 'daily',
+      startDate: _startDate!,
+      endDate: _endDate,
+      refillThreshold: threshold,
+    );
+
+    try {
+      final logsRepository = LogsRepository();
+      final refillService = RefillService(logsRepository);
+      final calculatedDate = await refillService.calculateRefillDate(tempMedication);
+      
+      if (calculatedDate != null && !_manualRefillDate) {
+        setState(() {
+          _refillDate = calculatedDate;
+          _calculatedRefillDate = '${calculatedDate.day}/${calculatedDate.month}/${calculatedDate.year}';
+        });
+      }
+    } catch (e) {
+      debugPrint('Error calculating refill date: $e');
+    }
   }
 
   Future<void> _selectTime() async {
@@ -61,6 +149,11 @@ class _AddMedicationScreenState extends ConsumerState<AddMedicationScreen> {
           final bMinutes = b.hour * 60 + b.minute;
           return aMinutes.compareTo(bMinutes);
         });
+        // Update frequency based on count
+        if (_selectedTimes.length == 1) _selectedFrequency = 'Once daily';
+        else if (_selectedTimes.length == 2) _selectedFrequency = 'Twice daily';
+        else if (_selectedTimes.length == 3) _selectedFrequency = 'Three times daily';
+        else if (_selectedTimes.length >= 4) _selectedFrequency = 'Four times daily';
       });
     }
   }
@@ -85,12 +178,46 @@ class _AddMedicationScreenState extends ConsumerState<AddMedicationScreen> {
       lastDate: DateTime.now().add(const Duration(days: 3650)),
     );
     if (date != null) {
-      setState(() => _endDate = date);
+      setState(() {
+        _endDate = date;
+        // Update duration
+        if (_startDate != null) {
+          final days = date.difference(_startDate!).inDays;
+          _durationController.text = days.toString();
+        }
+      });
+    }
+  }
+
+  Future<void> _selectPrescriptionImage() async {
+    final picker = ImagePicker();
+    final image = await picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 85,
+    );
+    if (image != null) {
+      setState(() {
+        _prescriptionImage = File(image.path);
+      });
     }
   }
 
   void _removeTime(TimeOfDay time) {
-    setState(() => _selectedTimes.remove(time));
+    setState(() {
+      _selectedTimes.remove(time);
+      // Update frequency based on count
+      if (_selectedTimes.length == 1) _selectedFrequency = 'Once daily';
+      else if (_selectedTimes.length == 2) _selectedFrequency = 'Twice daily';
+      else if (_selectedTimes.length == 3) _selectedFrequency = 'Three times daily';
+      else if (_selectedTimes.length >= 4) _selectedFrequency = 'Four times daily';
+    });
+  }
+
+  String _getDisplayTime(TimeOfDay time) {
+    final hour = time.hour > 12 ? time.hour - 12 : (time.hour == 0 ? 12 : time.hour);
+    final minute = time.minute.toString().padLeft(2, '0');
+    final amPm = time.hour >= 12 ? 'AM' : 'PM';
+    return '$hour:$minute $amPm';
   }
 
   Future<void> _saveMedication() async {
@@ -112,31 +239,69 @@ class _AddMedicationScreenState extends ConsumerState<AddMedicationScreen> {
       final medication = Medication(
         id: widget.medication?.id ?? '',
         name: _nameController.text.trim(),
-        dosage: _dosageController.text.trim(),
+        dosage: '${_dosageController.text.trim()} $_selectedUnit',
         timesPerDay: _selectedTimes,
-        frequency: 'daily',
+        frequency: _selectedFrequency.toLowerCase().replaceAll(' ', '_'),
         startDate: _startDate!,
         endDate: _endDate,
         notes: _notesController.text.trim().isEmpty ? null : _notesController.text.trim(),
-        refillThreshold: _refillThreshold,
+        refillThreshold: _refillThresholdController.text.trim().isEmpty 
+            ? null 
+            : int.tryParse(_refillThresholdController.text.trim()),
+        refillDate: _refillDate,
+        manualRefillDate: _manualRefillDate,
       );
 
       final repository = ref.read(medicationRepositoryProvider);
       final notificationsService = ref.read(notificationsServiceProvider);
+      final logsRepository = LogsRepository();
+      final refillService = RefillService(logsRepository);
 
+      Medication finalMedication = medication;
+      if (!_manualRefillDate && medication.refillThreshold != null) {
+        final calculatedDate = await refillService.calculateRefillDate(medication);
+        finalMedication = Medication(
+          id: medication.id,
+          name: medication.name,
+          dosage: medication.dosage,
+          timesPerDay: medication.timesPerDay,
+          frequency: medication.frequency,
+          startDate: medication.startDate,
+          endDate: medication.endDate,
+          notes: medication.notes,
+          refillThreshold: medication.refillThreshold,
+          refillDate: calculatedDate,
+          manualRefillDate: false,
+        );
+      }
+
+      String medicationId;
       if (widget.medication != null) {
-        await repository.updateMedication(widget.medication!.id, medication);
+        medicationId = widget.medication!.id;
+        await repository.updateMedication(medicationId, finalMedication);
+        await notificationsService.cancelRefillReminder(medicationId.hashCode);
       } else {
-        final id = await repository.addMedication(medication);
-        // Schedule notifications for each time
+        medicationId = await repository.addMedication(finalMedication);
+      }
+
+      // Schedule notifications if enabled
+      if (_notificationsEnabled) {
         for (int i = 0; i < _selectedTimes.length; i++) {
           await notificationsService.scheduleRecurringReminder(
-            baseId: id.hashCode + i,
+            baseId: medicationId.hashCode + i,
             title: 'Medication Reminder',
-            body: 'Time to take ${medication.name} (${medication.dosage})',
+            body: 'Time to take ${finalMedication.name} (${finalMedication.dosage})',
             time: _selectedTimes[i],
+            medicationId: medicationId,
           );
         }
+      }
+
+      if (_refillReminder && finalMedication.refillDate != null) {
+        await notificationsService.scheduleRefillReminder(
+          id: medicationId.hashCode + 10000,
+          medication: finalMedication,
+        );
       }
 
       if (mounted) {
@@ -161,117 +326,413 @@ class _AddMedicationScreenState extends ConsumerState<AddMedicationScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.medication != null ? 'Edit Medication' : 'Add Medication'),
-      ),
-      body: Form(
-        key: _formKey,
-        child: ListView(
-          padding: const EdgeInsets.all(16),
+      backgroundColor: Colors.white,
+      body: SafeArea(
+        bottom: false,
+        child: Column(
           children: [
-            TextFormField(
-              controller: _nameController,
-              decoration: const InputDecoration(
-                labelText: 'Medication Name',
-                prefixIcon: Icon(Icons.medication),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.all(Radius.circular(16)),
+            // Teal/Green Header
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
+              decoration: const BoxDecoration(
+                color: AppTheme.primary,
+              ),
+              child: Row(
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.arrow_back, color: Colors.white),
+                    onPressed: () => context.pop(),
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                  ),
+                  const Expanded(
+                    child: Text(
+                      'Add Medication',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                  const SizedBox(width: 48), // Balance spacing
+                ],
+              ),
+            ),
+            // Form Content
+            Expanded(
+              child: Form(
+                key: _formKey,
+                child: ListView(
+                  padding: const EdgeInsets.all(20),
+                  children: [
+                    // Medication Name
+                    TextFormField(
+                      controller: _nameController,
+                      style: const TextStyle(color: Colors.black87, fontSize: 15),
+                      decoration: InputDecoration(
+                        labelText: 'Medication Name*',
+                        hintText: 'e.g., Metformin',
+                        hintStyle: TextStyle(color: Colors.grey[400], fontSize: 14),
+                        labelStyle: TextStyle(color: Colors.grey[600], fontSize: 14),
+                        prefixIcon: const Icon(Icons.medication, color: Colors.grey),
+                        filled: true,
+                        fillColor: Colors.grey[100],
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide.none,
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                      ),
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Please enter medication name';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    // Dosage and Unit Row
+                    Row(
+                      children: [
+                        Expanded(
+                          flex: 2,
+                          child: TextFormField(
+                            controller: _dosageController,
+                            style: const TextStyle(color: Colors.black87, fontSize: 15),
+                            decoration: InputDecoration(
+                              labelText: 'Dosage*',
+                              hintText: 'e.g., 500',
+                              hintStyle: TextStyle(color: Colors.grey[400], fontSize: 14),
+                              labelStyle: TextStyle(color: Colors.grey[600], fontSize: 14),
+                              filled: true,
+                              fillColor: Colors.grey[100],
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: BorderSide.none,
+                              ),
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                            ),
+                            keyboardType: TextInputType.number,
+                            validator: (value) {
+                              if (value == null || value.isEmpty) {
+                                return 'Required';
+                              }
+                              return null;
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          flex: 1,
+                          child: DropdownButtonFormField<String>(
+                            value: _selectedUnit,
+                            decoration: InputDecoration(
+                              labelText: 'Unit',
+                              labelStyle: TextStyle(color: Colors.grey[600], fontSize: 14),
+                              filled: true,
+                              fillColor: Colors.grey[100],
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: BorderSide.none,
+                              ),
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                            ),
+                            items: _units.map((unit) {
+                              return DropdownMenuItem(
+                                value: unit,
+                                child: Text(unit, style: const TextStyle(fontSize: 15)),
+                              );
+                            }).toList(),
+                            onChanged: (value) {
+                              setState(() => _selectedUnit = value ?? 'mg');
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    // Frequency Dropdown
+                    DropdownButtonFormField<String>(
+                      value: _selectedFrequency,
+                      decoration: InputDecoration(
+                        labelText: 'Frequency*',
+                        hintText: 'Select frequency',
+                        hintStyle: TextStyle(color: Colors.grey[400], fontSize: 14),
+                        labelStyle: TextStyle(color: Colors.grey[600], fontSize: 14),
+                        prefixIcon: const Icon(Icons.repeat, color: Colors.grey),
+                        filled: true,
+                        fillColor: Colors.grey[100],
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide.none,
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                      ),
+                      items: _frequencies.map((freq) {
+                        return DropdownMenuItem(
+                          value: freq,
+                          child: Text(freq, style: const TextStyle(fontSize: 15)),
+                        );
+                      }).toList(),
+                      onChanged: (value) {
+                        setState(() => _selectedFrequency = value ?? 'Once daily');
+                      },
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Please select frequency';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    // Time Field
+                    InkWell(
+                      onTap: _selectTime,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                        decoration: BoxDecoration(
+                          color: Colors.grey[100],
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.access_time, color: Colors.grey),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Time*',
+                                    style: TextStyle(
+                                      color: Colors.grey[600],
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    _selectedTimes.isEmpty
+                                        ? 'Tap to add time'
+                                        : _selectedTimes.map((t) => _getDisplayTime(t)).join(', '),
+                                    style: TextStyle(
+                                      color: _selectedTimes.isEmpty ? Colors.grey[400] : Colors.black87,
+                                      fontSize: 15,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            if (_selectedTimes.isNotEmpty)
+                              IconButton(
+                                icon: const Icon(Icons.close, size: 20),
+                                onPressed: () {
+                                  setState(() => _selectedTimes.clear());
+                                },
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints(),
+                              ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    // Duration (days)
+                    TextFormField(
+                      controller: _durationController,
+                      style: const TextStyle(color: Colors.black87, fontSize: 15),
+                      decoration: InputDecoration(
+                        labelText: 'Duration (days)',
+                        hintText: 'e.g., 30',
+                        hintStyle: TextStyle(color: Colors.grey[400], fontSize: 14),
+                        labelStyle: TextStyle(color: Colors.grey[600], fontSize: 14),
+                        prefixIcon: const Icon(Icons.calendar_today, color: Colors.grey),
+                        filled: true,
+                        fillColor: Colors.grey[100],
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide.none,
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                      ),
+                      keyboardType: TextInputType.number,
+                      onChanged: (value) {
+                        final days = int.tryParse(value);
+                        if (days != null && _startDate != null) {
+                          setState(() {
+                            _endDate = _startDate!.add(Duration(days: days));
+                          });
+                        }
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    // Notes
+                    TextFormField(
+                      controller: _notesController,
+                      style: const TextStyle(color: Colors.black87, fontSize: 15),
+                      decoration: InputDecoration(
+                        labelText: 'Notes (Optional)',
+                        hintText: 'Take with food, avoid dairy...',
+                        hintStyle: TextStyle(color: Colors.grey[400], fontSize: 14),
+                        labelStyle: TextStyle(color: Colors.grey[600], fontSize: 14),
+                        prefixIcon: const Icon(Icons.note, color: Colors.grey),
+                        filled: true,
+                        fillColor: Colors.grey[100],
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide.none,
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                      ),
+                      maxLines: 3,
+                    ),
+                    const SizedBox(height: 24),
+                    // Upload Prescription Photo
+                    const Text(
+                      'Upload Prescription Photo',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    InkWell(
+                      onTap: _selectPrescriptionImage,
+                      child: Container(
+                        height: 120,
+                        decoration: BoxDecoration(
+                          color: Colors.grey[50],
+                          border: Border.all(
+                            color: Colors.grey[300]!,
+                            style: BorderStyle.solid,
+                            width: 2,
+                          ),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: _prescriptionImage != null
+                            ? Stack(
+                                children: [
+                                  ClipRRect(
+                                    borderRadius: BorderRadius.circular(10),
+                                    child: Image.file(
+                                      _prescriptionImage!,
+                                      fit: BoxFit.cover,
+                                      width: double.infinity,
+                                    ),
+                                  ),
+                                  Positioned(
+                                    top: 8,
+                                    right: 8,
+                                    child: IconButton(
+                                      icon: const Icon(Icons.close, color: Colors.white),
+                                      onPressed: () {
+                                        setState(() => _prescriptionImage = null);
+                                      },
+                                      style: IconButton.styleFrom(
+                                        backgroundColor: Colors.black54,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              )
+                            : Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  const Icon(Icons.camera_alt, size: 32, color: Colors.grey),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    'Take or Upload Photo',
+                                    style: TextStyle(
+                                      color: Colors.grey[600],
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    // Notification Settings
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Enable Notifications',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'Receive reminders for this medication',
+                              style: TextStyle(
+                                color: Colors.grey[600],
+                                fontSize: 13,
+                              ),
+                            ),
+                          ],
+                        ),
+                        Switch(
+                          value: _notificationsEnabled,
+                          onChanged: (value) {
+                            setState(() => _notificationsEnabled = value);
+                          },
+                        ),
+                      ],
+                    ),
+                    if (_notificationsEnabled) ...[
+                      const SizedBox(height: 16),
+                      _NotificationToggleItem(
+                        title: 'Sound Alert',
+                        subtitle: 'Play sound with notification',
+                        value: _soundAlert,
+                        onChanged: (value) {
+                          setState(() => _soundAlert = value);
+                        },
+                      ),
+                    ],
+                    const SizedBox(height: 16),
+                    _NotificationToggleItem(
+                      title: 'Refill Reminder',
+                      subtitle: 'Remind when supply is low',
+                      value: _refillReminder,
+                      onChanged: (value) {
+                        setState(() => _refillReminder = value);
+                      },
+                    ),
+                    const SizedBox(height: 32),
+                    // Save Button
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: _saveMedication,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppTheme.primary,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          elevation: 0,
+                        ),
+                        child: const Text(
+                          'Save Medication',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              validator: (value) {
-                if (value == null || value.isEmpty) {
-                  return 'Please enter medication name';
-                }
-                return null;
-              },
-            ),
-            const SizedBox(height: 16),
-            TextFormField(
-              controller: _dosageController,
-              decoration: const InputDecoration(
-                labelText: 'Dosage (e.g., 1 tablet, 5ml)',
-                prefixIcon: Icon(Icons.science),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.all(Radius.circular(16)),
-                ),
-              ),
-              validator: (value) {
-                if (value == null || value.isEmpty) {
-                  return 'Please enter dosage';
-                }
-                return null;
-              },
-            ),
-            const SizedBox(height: 24),
-            Text(
-              'Dose Times',
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                ..._selectedTimes.map((time) {
-                  return Chip(
-                    label: Text('${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}'),
-                    onDeleted: () => _removeTime(time),
-                  );
-                }),
-                ActionChip(
-                  avatar: const Icon(Icons.add, size: 18),
-                  label: const Text('Add Time'),
-                  onPressed: _selectTime,
-                ),
-              ],
-            ),
-            const SizedBox(height: 24),
-            ListTile(
-              leading: const Icon(Icons.calendar_today),
-              title: const Text('Start Date'),
-              subtitle: Text(_startDate != null
-                  ? '${_startDate!.day}/${_startDate!.month}/${_startDate!.year}'
-                  : 'Not selected'),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: _selectStartDate,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-            ),
-            ListTile(
-              leading: const Icon(Icons.event),
-              title: const Text('End Date (Optional)'),
-              subtitle: Text(_endDate != null
-                  ? '${_endDate!.day}/${_endDate!.month}/${_endDate!.year}'
-                  : 'No end date'),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: _selectEndDate,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-            ),
-            const SizedBox(height: 16),
-            TextFormField(
-              controller: _notesController,
-              decoration: const InputDecoration(
-                labelText: 'Notes (Optional)',
-                prefixIcon: Icon(Icons.note),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.all(Radius.circular(16)),
-                ),
-              ),
-              maxLines: 3,
-            ),
-            const SizedBox(height: 24),
-            ElevatedButton(
-              onPressed: _saveMedication,
-              style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-              ),
-              child: const Text('Save Medication'),
             ),
           ],
         ),
@@ -280,3 +741,51 @@ class _AddMedicationScreenState extends ConsumerState<AddMedicationScreen> {
   }
 }
 
+class _NotificationToggleItem extends StatelessWidget {
+  final String title;
+  final String subtitle;
+  final bool value;
+  final ValueChanged<bool> onChanged;
+
+  const _NotificationToggleItem({
+    required this.title,
+    required this.subtitle,
+    required this.value,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                subtitle,
+                style: TextStyle(
+                  color: Colors.grey[600],
+                  fontSize: 13,
+                ),
+              ),
+            ],
+          ),
+        ),
+        Switch(
+          value: value,
+          onChanged: onChanged,
+        ),
+      ],
+    );
+  }
+}

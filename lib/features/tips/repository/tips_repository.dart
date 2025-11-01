@@ -29,29 +29,70 @@ class HealthTip {
 class TipsRepository {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  Stream<List<HealthTip>> watchTips({int limit = 10}) {
-    return _firestore
+  Stream<List<HealthTip>> watchTips({
+    int limit = 10,
+    String? category,
+    List<String>? userConditions,
+  }) {
+    Query query = _firestore
         .collection('healthTips')
-        .orderBy('createdAt', descending: true)
-        .limit(limit)
-        .snapshots()
-        .map((snapshot) {
-      return snapshot.docs
-          .map((doc) => HealthTip.fromMap(doc.id, doc.data()))
+        .orderBy('createdAt', descending: true);
+
+    if (category != null && category.isNotEmpty) {
+      query = query.where('category', isEqualTo: category);
+    }
+
+    return query.limit(limit).snapshots().map((snapshot) {
+      var tips = snapshot.docs
+          .map((doc) => HealthTip.fromMap(doc.id, doc.data() as Map<String, dynamic>))
           .toList();
+
+      // Prioritize tips relevant to user conditions
+      if (userConditions != null && userConditions.isNotEmpty) {
+        tips.sort((a, b) {
+          final aRelevant = a.category != null && userConditions.contains(a.category!.toLowerCase());
+          final bRelevant = b.category != null && userConditions.contains(b.category!.toLowerCase());
+          if (aRelevant && !bRelevant) return -1;
+          if (!aRelevant && bRelevant) return 1;
+          return 0;
+        });
+      }
+
+      return tips;
     });
   }
 
-  Future<List<HealthTip>> getTips({int limit = 10}) async {
-    final snapshot = await _firestore
+  Future<List<HealthTip>> getTips({
+    int limit = 10,
+    String? category,
+    List<String>? userConditions,
+  }) async {
+    Query query = _firestore
         .collection('healthTips')
-        .orderBy('createdAt', descending: true)
-        .limit(limit)
-        .get();
+        .orderBy('createdAt', descending: true);
 
-    return snapshot.docs
-        .map((doc) => HealthTip.fromMap(doc.id, doc.data()))
+    if (category != null && category.isNotEmpty) {
+      query = query.where('category', isEqualTo: category);
+    }
+
+    final snapshot = await query.limit(limit).get();
+
+    var tips = snapshot.docs
+        .map((doc) => HealthTip.fromMap(doc.id, doc.data() as Map<String, dynamic>))
         .toList();
+
+    // Prioritize tips relevant to user conditions
+    if (userConditions != null && userConditions.isNotEmpty) {
+      tips.sort((a, b) {
+        final aRelevant = a.category != null && userConditions.contains(a.category!.toLowerCase());
+        final bRelevant = b.category != null && userConditions.contains(b.category!.toLowerCase());
+        if (aRelevant && !bRelevant) return -1;
+        if (!aRelevant && bRelevant) return 1;
+        return 0;
+      });
+    }
+
+    return tips;
   }
 }
 

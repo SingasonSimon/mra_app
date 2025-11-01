@@ -10,6 +10,9 @@ class Medication {
   final DateTime? endDate;
   final String? notes;
   final int? refillThreshold;
+  final DateTime? refillDate;
+  final bool manualRefillDate;
+  final int? dosesRemaining;
 
   Medication({
     required this.id,
@@ -21,6 +24,9 @@ class Medication {
     this.endDate,
     this.notes,
     this.refillThreshold,
+    this.refillDate,
+    this.manualRefillDate = false,
+    this.dosesRemaining,
   });
 
   Map<String, dynamic> toMap() {
@@ -33,6 +39,9 @@ class Medication {
       'endDate': endDate?.millisecondsSinceEpoch,
       'notes': notes,
       'refillThreshold': refillThreshold,
+      'refillDate': refillDate?.millisecondsSinceEpoch,
+      'manualRefillDate': manualRefillDate,
+      'dosesRemaining': dosesRemaining,
     };
   }
 
@@ -56,6 +65,9 @@ class Medication {
       endDate: map['endDate'] != null ? DateTime.fromMillisecondsSinceEpoch(map['endDate'] as int) : null,
       notes: map['notes'] as String?,
       refillThreshold: map['refillThreshold'] as int?,
+      refillDate: map['refillDate'] != null ? DateTime.fromMillisecondsSinceEpoch(map['refillDate'] as int) : null,
+      manualRefillDate: map['manualRefillDate'] as bool? ?? false,
+      dosesRemaining: map['dosesRemaining'] as int?,
     );
   }
 }

@@ -45,6 +45,14 @@ class LocalStorage {
     return _prefs.getInt(key);
   }
 
+  Future<void> setDouble(String key, double value) async {
+    await _prefs.setDouble(key, value);
+  }
+
+  double? getDouble(String key) {
+    return _prefs.getDouble(key);
+  }
+
   Future<void> remove(String key) async {
     await _prefs.remove(key);
   }
