@@ -110,7 +110,7 @@ class WelcomeScreen extends StatelessWidget {
                           child: Text(
                             'Sign In',
                             style: TextStyle(
-                              color: AppTheme.accentGreen,
+                              color: AppTheme.teal600,
                               fontWeight: FontWeight.bold,
                             ),
                           ),

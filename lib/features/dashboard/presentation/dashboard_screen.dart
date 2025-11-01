@@ -29,8 +29,11 @@ class DashboardScreen extends ConsumerWidget {
     final nextDoseAsyncValue = ref.watch(nextDoseProvider);
     final todayMedsAsync = ref.watch(todayMedicationsProvider);
 
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Scaffold(
-      backgroundColor: AppTheme.gray50,
+      backgroundColor: theme.colorScheme.background,
       body: SafeArea(
         bottom: false,
         child: Column(
@@ -39,9 +42,9 @@ class DashboardScreen extends ConsumerWidget {
             Container(
               width: double.infinity,
               padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                 gradient: AppTheme.tealGradient,
-                borderRadius: BorderRadius.only(
+                borderRadius: const BorderRadius.only(
                   bottomLeft: Radius.circular(24),
                   bottomRight: Radius.circular(24),
                 ),
@@ -186,32 +189,37 @@ class DashboardScreen extends ConsumerWidget {
                         if (nextDose == null) {
                           return const SizedBox.shrink();
                         }
+                        final cardBg = isDark ? const Color(0xFF1F2937) : AppTheme.white;
+                        final cardBorder = isDark ? AppTheme.gray700 : AppTheme.blue200;
                         return Container(
                           margin: const EdgeInsets.only(bottom: 20),
                           padding: const EdgeInsets.all(20),
                           decoration: BoxDecoration(
-                            color: Colors.white,
+                            color: cardBg,
                             borderRadius: BorderRadius.circular(16),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.05),
-                                blurRadius: 10,
-                                offset: const Offset(0, 2),
-                              ),
-                            ],
+                            border: Border.all(color: cardBorder, width: 1),
+                            boxShadow: isDark
+                                ? []
+                                : [
+                                    BoxShadow(
+                                      color: Colors.black.withValues(alpha: 0.05),
+                                      blurRadius: 10,
+                                      offset: const Offset(0, 2),
+                                    ),
+                                  ],
                           ),
                           child: Row(
                             children: [
                               Container(
                                 padding: const EdgeInsets.all(12),
                                 decoration: BoxDecoration(
-                                  color: Colors.blue[50],
+                                  color: AppTheme.blue50,
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                                 child: const Icon(
-                                  Icons.access_time,
-                                  color: Colors.blue,
-                                  size: 28,
+                                  AppIcons.clock,
+                                  color: AppTheme.blue600,
+                                  size: 24,
                                 ),
                               ),
                               const SizedBox(width: 16),
@@ -231,7 +239,9 @@ class DashboardScreen extends ConsumerWidget {
                                       '${nextDose.medication.name} ${nextDose.medication.dosage} at ${nextDose.formattedTime}',
                                       style: TextStyle(
                                         fontSize: 13,
-                                        color: Colors.grey[600],
+                                        color: isDark
+                                            ? AppTheme.white.withValues(alpha: 0.6)
+                                            : AppTheme.gray600,
                                       ),
                                     ),
                                   ],
@@ -249,27 +259,27 @@ class DashboardScreen extends ConsumerWidget {
                       children: [
                         Expanded(
                           child: _QuickActionButton(
-                            icon: Icons.add,
+                            icon: AppIcons.plus,
                             label: 'Add Med',
-                            color: AppTheme.primary,
+                            color: AppTheme.teal500,
                             onTap: () => context.push('/medications/add'),
                           ),
                         ),
                         const SizedBox(width: 12),
                         Expanded(
                           child: _QuickActionButton(
-                            icon: Icons.history,
+                            icon: AppIcons.barChart3,
                             label: 'History',
-                            color: Colors.blue,
+                            color: AppTheme.blue500,
                             onTap: () => context.push('/history'),
                           ),
                         ),
                         const SizedBox(width: 12),
                         Expanded(
                           child: _QuickActionButton(
-                            icon: Icons.phone,
+                            icon: AppIcons.phone,
                             label: 'Emergency',
-                            color: Colors.red,
+                            color: AppTheme.red500,
                             onTap: () => context.push('/emergency'),
                           ),
                         ),
@@ -277,11 +287,12 @@ class DashboardScreen extends ConsumerWidget {
                     ),
                     const SizedBox(height: 24),
                     // Today's Medication Section
-                    const Text(
+                    Text(
                       "Today's Medication",
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
+                        color: isDark ? AppTheme.white : AppTheme.gray900,
                       ),
                     ),
                     const SizedBox(height: 16),
@@ -291,21 +302,26 @@ class DashboardScreen extends ConsumerWidget {
                           return Container(
                             padding: const EdgeInsets.all(32),
                             decoration: BoxDecoration(
-                              color: Colors.white,
+                              color: isDark ? const Color(0xFF1F2937) : AppTheme.white,
                               borderRadius: BorderRadius.circular(16),
+                              border: Border.all(
+                                color: isDark ? AppTheme.gray700 : AppTheme.gray200,
+                              ),
                             ),
                             child: Column(
                               children: [
                                 Icon(
-                                  Icons.medication,
+                                  AppIcons.pill,
                                   size: 48,
-                                  color: Colors.grey[400],
+                                  color: AppTheme.gray400,
                                 ),
                                 const SizedBox(height: 16),
                                 Text(
                                   'No medications scheduled for today',
                                   style: TextStyle(
-                                    color: Colors.grey[600],
+                                    color: isDark
+                                        ? AppTheme.white.withValues(alpha: 0.6)
+                                        : AppTheme.gray600,
                                     fontSize: 16,
                                   ),
                                 ),
@@ -419,31 +435,40 @@ class _MedicationCard extends StatelessWidget {
     final displayHour = hour > 12 ? hour - 12 : (hour == 0 ? 12 : hour);
     final timeStr = '${displayHour.toString().padLeft(2, '0')}:${minute.toString().padLeft(2, '0')} $amPm';
     
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDark ? const Color(0xFF1F2937) : AppTheme.white,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        border: Border.all(
+          color: isDark ? AppTheme.gray700 : AppTheme.gray200,
+          width: 1,
+        ),
+        boxShadow: isDark
+            ? []
+            : [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.05),
+                  blurRadius: 10,
+                  offset: const Offset(0, 2),
+                ),
+              ],
       ),
       child: Row(
         children: [
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: isTaken ? Colors.green[50] : (isUpcoming ? Colors.blue[50] : Colors.grey[100]),
+              color: isTaken ? AppTheme.successBg : (isUpcoming ? AppTheme.blue50 : AppTheme.gray100),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(
-              isTaken ? Icons.check_circle : Icons.info,
-              color: isTaken ? Colors.green : (isUpcoming ? Colors.blue : Colors.grey),
+              isTaken ? AppIcons.check : AppIcons.alertCircle,
+              color: isTaken ? AppTheme.successText : (isUpcoming ? AppTheme.blue600 : AppTheme.gray500),
               size: 24,
             ),
           ),
@@ -464,7 +489,9 @@ class _MedicationCard extends StatelessWidget {
                     '${medication.dosage} • $timeStr',
                     style: TextStyle(
                       fontSize: 13,
-                      color: Colors.grey[600],
+                      color: isDark
+                          ? AppTheme.white.withValues(alpha: 0.6)
+                          : AppTheme.gray600,
                     ),
                   ),
               ],
@@ -474,13 +501,13 @@ class _MedicationCard extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
-                color: Colors.green[50],
+                color: AppTheme.successBg,
                 borderRadius: BorderRadius.circular(20),
               ),
-              child: Text(
+              child: const Text(
                 'Taken',
                 style: TextStyle(
-                  color: Colors.green[700],
+                  color: AppTheme.successTextDark,
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
                 ),
@@ -490,12 +517,13 @@ class _MedicationCard extends StatelessWidget {
             ElevatedButton(
               onPressed: onMarkTaken,
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.blue,
-                foregroundColor: Colors.white,
+                backgroundColor: AppTheme.blue500,
+                foregroundColor: AppTheme.white,
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(20),
                 ),
+                elevation: 0,
               ),
               child: const Text(
                 'Mark Taken',

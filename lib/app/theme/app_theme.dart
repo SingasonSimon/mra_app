@@ -189,12 +189,12 @@ class AppTheme {
   static ThemeData dark() {
     final colorScheme = ColorScheme.fromSeed(
       seedColor: teal500,
-      primary: teal500,
+      primary: teal600,
       secondary: blue500,
       error: red500,
       brightness: Brightness.dark,
       background: gray900,
-      surface: const Color(0xFF1F2937),
+      surface: const Color(0xFF1F2937), // gray-800 equivalent
     );
 
     final textTheme = _textTheme.copyWith(
@@ -224,7 +224,7 @@ class AppTheme {
       appBarTheme: AppBarTheme(
         centerTitle: true,
         elevation: 0,
-        backgroundColor: teal600,
+        backgroundColor: const Color(0xFF1F2937), // gray-800
         foregroundColor: white,
         titleTextStyle: textTheme.titleLarge?.copyWith(
           color: white,

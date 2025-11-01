@@ -229,7 +229,7 @@ class _ModernLoginScreenState extends ConsumerState<ModernLoginScreen> {
                         child: Text(
                           'Forgot password?',
                           style: TextStyle(
-                            color: AppTheme.accentGreen.withValues(alpha: 0.9),
+                            color: AppTheme.teal600.withValues(alpha: 0.9),
                             fontSize: 14,
                           ),
                         ),
@@ -356,7 +356,7 @@ class _ModernLoginScreenState extends ConsumerState<ModernLoginScreen> {
                           child: Text(
                             'Sign Up',
                             style: TextStyle(
-                              color: AppTheme.accentGreen,
+                              color: AppTheme.teal600,
                               fontWeight: FontWeight.bold,
                               fontSize: 14,
                             ),

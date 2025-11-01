@@ -21,19 +21,21 @@ class EmergencyScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final medicationsAsync = ref.watch(medicationsStreamProvider);
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     
     return Scaffold(
-      backgroundColor: Colors.grey[50],
+      backgroundColor: theme.colorScheme.background,
       body: SafeArea(
         bottom: false,
         child: Column(
           children: [
-            // Red Header
+            // Red Header with Gradient
             Container(
               width: double.infinity,
               padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
-              decoration: const BoxDecoration(
-                color: Colors.red,
+              decoration: BoxDecoration(
+                gradient: AppTheme.redGradient,
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -41,7 +43,7 @@ class EmergencyScreen extends ConsumerWidget {
                   Row(
                     children: [
                       IconButton(
-                        icon: const Icon(Icons.arrow_back, color: Colors.white),
+                        icon: const Icon(AppIcons.arrowLeft, color: AppTheme.white),
                         onPressed: () => context.pop(),
                         padding: EdgeInsets.zero,
                         constraints: const BoxConstraints(),
@@ -59,8 +61,8 @@ class EmergencyScreen extends ConsumerWidget {
                           shape: BoxShape.circle,
                         ),
                         child: const Icon(
-                          Icons.warning,
-                          color: Colors.red,
+                          AppIcons.alertCircle,
+                          color: AppTheme.red600,
                           size: 28,
                         ),
                       ),
@@ -104,18 +106,26 @@ class EmergencyScreen extends ConsumerWidget {
                     Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        color: Colors.red[50],
+                        color: isDark ? AppTheme.red900.withValues(alpha: 0.3) : AppTheme.red50,
                         borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: isDark ? AppTheme.red700 : AppTheme.red200,
+                          width: 1,
+                        ),
                       ),
                       child: Row(
                         children: [
-                          const Icon(Icons.info_outline, color: Colors.black87, size: 20),
+                          Icon(
+                            AppIcons.alertCircle,
+                            color: isDark ? AppTheme.red500 : AppTheme.red700,
+                            size: 20,
+                          ),
                           const SizedBox(width: 12),
                           Expanded(
                             child: Text(
                               'In case of medical emergency, always call 911 or your local emergency number first.',
                               style: TextStyle(
-                                color: Colors.grey[800],
+                                color: isDark ? AppTheme.white : AppTheme.gray900,
                                 fontSize: 13,
                               ),
                             ),
@@ -128,7 +138,7 @@ class EmergencyScreen extends ConsumerWidget {
                     Container(
                       padding: const EdgeInsets.all(20),
                       decoration: BoxDecoration(
-                        color: Colors.red,
+                        gradient: AppTheme.redGradient,
                         borderRadius: BorderRadius.circular(16),
                       ),
                       child: Column(
@@ -137,7 +147,7 @@ class EmergencyScreen extends ConsumerWidget {
                           const Text(
                             'Emergency Services',
                             style: TextStyle(
-                              color: Colors.white,
+                              color: AppTheme.white,
                               fontSize: 16,
                               fontWeight: FontWeight.bold,
                             ),
@@ -149,23 +159,23 @@ class EmergencyScreen extends ConsumerWidget {
                               child: ElevatedButton(
                                 onPressed: () => _makePhoneCall('911'),
                                 style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.white,
-                                  foregroundColor: Colors.red,
+                                  backgroundColor: AppTheme.white,
+                                  foregroundColor: AppTheme.red600,
                                   padding: const EdgeInsets.symmetric(vertical: 16),
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(12),
                                   ),
                                   elevation: 0,
                                 ),
-                                child: const Row(
+                                child: Row(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
-                                    Icon(Icons.phone, color: Colors.red, size: 24),
-                                    SizedBox(width: 8),
+                                    const Icon(AppIcons.phone, color: AppTheme.red600, size: 24),
+                                    const SizedBox(width: 8),
                                     Text(
                                       'Call 911',
                                       style: TextStyle(
-                                        color: Colors.red,
+                                        color: AppTheme.red600,
                                         fontSize: 18,
                                         fontWeight: FontWeight.bold,
                                       ),
@@ -183,11 +193,12 @@ class EmergencyScreen extends ConsumerWidget {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text(
+                        Text(
                           'Emergency Contacts',
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
+                            color: isDark ? AppTheme.white : AppTheme.gray900,
                           ),
                         ),
                         OutlinedButton.icon(
@@ -197,11 +208,14 @@ class EmergencyScreen extends ConsumerWidget {
                               const SnackBar(content: Text('Add contact feature coming soon')),
                             );
                           },
-                          icon: const Icon(Icons.add, size: 18),
+                          icon: const Icon(AppIcons.plus, size: 18),
                           label: const Text('Add', style: TextStyle(fontSize: 13)),
                           style: OutlinedButton.styleFrom(
                             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                            side: BorderSide(color: Colors.grey[300]!),
+                            side: BorderSide(
+                              color: isDark ? AppTheme.gray700 : AppTheme.gray200,
+                            ),
+                            foregroundColor: isDark ? AppTheme.gray400 : AppTheme.gray700,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(8),
                             ),
@@ -233,11 +247,12 @@ class EmergencyScreen extends ConsumerWidget {
                     ),
                     const SizedBox(height: 24),
                     // Medication Summary
-                    const Text(
+                    Text(
                       'Medication Summary',
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
+                        color: isDark ? AppTheme.white : AppTheme.gray900,
                       ),
                     ),
                     const SizedBox(height: 12),
@@ -247,13 +262,18 @@ class EmergencyScreen extends ConsumerWidget {
                           return Container(
                             padding: const EdgeInsets.all(16),
                             decoration: BoxDecoration(
-                              color: Colors.white,
+                              color: isDark ? const Color(0xFF1F2937) : AppTheme.white,
                               borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: isDark ? AppTheme.gray700 : AppTheme.gray200,
+                              ),
                             ),
                             child: Text(
                               'No medications recorded',
                               style: TextStyle(
-                                color: Colors.grey[600],
+                                color: isDark
+                                    ? AppTheme.white.withValues(alpha: 0.6)
+                                    : AppTheme.gray600,
                                 fontSize: 13,
                               ),
                             ),
@@ -262,8 +282,11 @@ class EmergencyScreen extends ConsumerWidget {
                         return Container(
                           padding: const EdgeInsets.all(16),
                           decoration: BoxDecoration(
-                            color: Colors.white,
+                            color: isDark ? const Color(0xFF1F2937) : AppTheme.white,
                             borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: isDark ? AppTheme.gray700 : AppTheme.gray200,
+                            ),
                           ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -273,7 +296,11 @@ class EmergencyScreen extends ConsumerWidget {
                                 child: Row(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    const Icon(Icons.medication, size: 16, color: Colors.grey),
+                                    Icon(
+                                      AppIcons.pill,
+                                      size: 16,
+                                      color: isDark ? AppTheme.gray400 : AppTheme.gray500,
+                                    ),
                                     const SizedBox(width: 8),
                                     Expanded(
                                       child: Column(
@@ -281,16 +308,19 @@ class EmergencyScreen extends ConsumerWidget {
                                         children: [
                                           Text(
                                             med.name,
-                                            style: const TextStyle(
+                                            style: TextStyle(
                                               fontSize: 14,
                                               fontWeight: FontWeight.w600,
+                                              color: isDark ? AppTheme.white : AppTheme.gray900,
                                             ),
                                           ),
                                           Text(
                                             '${med.dosage} - ${med.timesPerDay.length}x daily',
                                             style: TextStyle(
                                               fontSize: 12,
-                                              color: Colors.grey[600],
+                                              color: isDark
+                                                  ? AppTheme.white.withValues(alpha: 0.6)
+                                                  : AppTheme.gray600,
                                             ),
                                           ),
                                         ],
@@ -304,20 +334,29 @@ class EmergencyScreen extends ConsumerWidget {
                         );
                       },
                       loading: () => const Center(child: CircularProgressIndicator()),
-                      error: (_, __) => Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Text(
-                          'Error loading medications',
-                          style: TextStyle(
-                            color: Colors.grey[600],
-                            fontSize: 13,
+                      error: (_, __) {
+                        final theme = Theme.of(context);
+                        final isDark = theme.brightness == Brightness.dark;
+                        return Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: isDark ? const Color(0xFF1F2937) : AppTheme.white,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: isDark ? AppTheme.gray700 : AppTheme.gray200,
+                            ),
                           ),
-                        ),
-                      ),
+                          child: Text(
+                            'Error loading medications',
+                            style: TextStyle(
+                              color: isDark
+                                  ? AppTheme.white.withValues(alpha: 0.6)
+                                  : AppTheme.gray600,
+                              fontSize: 13,
+                            ),
+                          ),
+                        );
+                      },
                     ),
                   ],
                 ),
@@ -346,18 +385,27 @@ class _EmergencyContactCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDark ? const Color(0xFF1F2937) : AppTheme.white,
         borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        border: Border.all(
+          color: isDark ? AppTheme.gray700 : AppTheme.gray200,
+          width: 1,
+        ),
+        boxShadow: isDark
+            ? []
+            : [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.05),
+                  blurRadius: 10,
+                  offset: const Offset(0, 2),
+                ),
+              ],
       ),
       child: Row(
         children: [
@@ -365,12 +413,12 @@ class _EmergencyContactCard extends StatelessWidget {
             width: 48,
             height: 48,
             decoration: BoxDecoration(
-              color: Colors.blue[50],
+              color: AppTheme.blue50,
               shape: BoxShape.circle,
             ),
             child: const Icon(
-              Icons.person,
-              color: Colors.blue,
+              AppIcons.user,
+              color: AppTheme.blue600,
               size: 24,
             ),
           ),
@@ -381,9 +429,10 @@ class _EmergencyContactCard extends StatelessWidget {
               children: [
                 Text(
                   name,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w600,
+                    color: isDark ? AppTheme.white : AppTheme.gray900,
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -391,7 +440,9 @@ class _EmergencyContactCard extends StatelessWidget {
                   type,
                   style: TextStyle(
                     fontSize: 13,
-                    color: Colors.grey[600],
+                    color: isDark
+                        ? AppTheme.white.withValues(alpha: 0.6)
+                        : AppTheme.gray600,
                   ),
                 ),
                 const SizedBox(height: 2),
@@ -399,7 +450,9 @@ class _EmergencyContactCard extends StatelessWidget {
                   phone,
                   style: TextStyle(
                     fontSize: 13,
-                    color: Colors.grey[600],
+                    color: isDark
+                        ? AppTheme.white.withValues(alpha: 0.6)
+                        : AppTheme.gray600,
                   ),
                 ),
               ],
@@ -408,15 +461,15 @@ class _EmergencyContactCard extends StatelessWidget {
           ElevatedButton(
             onPressed: onCall,
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.primary,
-              foregroundColor: Colors.white,
+              backgroundColor: AppTheme.teal500,
+              foregroundColor: AppTheme.white,
               padding: const EdgeInsets.all(12),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
               ),
               elevation: 0,
             ),
-            child: const Icon(Icons.phone, size: 20),
+            child: const Icon(AppIcons.phone, size: 20),
           ),
         ],
       ),

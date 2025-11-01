@@ -26,19 +26,27 @@ class ProfileScreen extends ConsumerWidget {
     final refillReminders = ref.watch(refillRemindersProvider);
     final darkMode = ref.watch(darkModeProvider);
     final largeTextMode = ref.watch(largeTextModeProvider);
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
 
     return Scaffold(
-      backgroundColor: Colors.grey[50],
+      backgroundColor: theme.colorScheme.background,
       body: SafeArea(
         bottom: false,
         child: Column(
           children: [
-            // Teal/Green Header
+            // Teal Header with Gradient
             Container(
               width: double.infinity,
               padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
-              decoration: const BoxDecoration(
-                color: AppTheme.primary,
+              decoration: BoxDecoration(
+                gradient: isDark
+                    ? const LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [Color(0xFF1F2937), Color(0xFF111827)],
+                      )
+                    : AppTheme.tealGradient,
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -46,7 +54,7 @@ class ProfileScreen extends ConsumerWidget {
                   Row(
                     children: [
                       IconButton(
-                        icon: const Icon(Icons.arrow_back, color: Colors.white),
+                        icon: const Icon(AppIcons.arrowLeft, color: AppTheme.white),
                         onPressed: () => context.pop(),
                         padding: EdgeInsets.zero,
                         constraints: const BoxConstraints(),
@@ -126,17 +134,22 @@ class ProfileScreen extends ConsumerWidget {
                     Container(
                       padding: const EdgeInsets.all(20),
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: isDark ? const Color(0xFF1F2937) : AppTheme.white,
                         borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: isDark ? AppTheme.gray700 : AppTheme.gray200,
+                          width: 1,
+                        ),
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
+                          Text(
                             'Medical Conditions',
                             style: TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.bold,
+                              color: isDark ? AppTheme.white : AppTheme.gray900,
                             ),
                           ),
                           const SizedBox(height: 12),
@@ -146,7 +159,9 @@ class ProfileScreen extends ConsumerWidget {
                                 return Text(
                                   'No conditions added',
                                   style: TextStyle(
-                                    color: Colors.grey[600],
+                                    color: isDark
+                                        ? AppTheme.white.withValues(alpha: 0.6)
+                                        : AppTheme.gray600,
                                     fontSize: 13,
                                   ),
                                 );
@@ -155,20 +170,21 @@ class ProfileScreen extends ConsumerWidget {
                                 spacing: 8,
                                 runSpacing: 8,
                                 children: profile.conditions.map((condition) {
+                                  final isTeal = condition.toLowerCase().contains('diabetes');
                                   return Container(
                                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                                     decoration: BoxDecoration(
-                                      color: condition.toLowerCase().contains('diabetes')
-                                          ? Colors.green[50]
-                                          : Colors.blue[50],
+                                      color: isTeal
+                                          ? AppTheme.successBg
+                                          : AppTheme.blue100,
                                       borderRadius: BorderRadius.circular(20),
                                     ),
                                     child: Text(
                                       condition,
                                       style: TextStyle(
-                                        color: condition.toLowerCase().contains('diabetes')
-                                            ? Colors.green[700]
-                                            : Colors.blue[700],
+                                        color: isTeal
+                                            ? AppTheme.successTextDark
+                                            : AppTheme.blue700,
                                         fontSize: 14,
                                         fontWeight: FontWeight.w500,
                                       ),
@@ -185,32 +201,39 @@ class ProfileScreen extends ConsumerWidget {
                     ),
                     const SizedBox(height: 20),
                     // Account Settings
-                    const Text(
+                    Text(
                       'Account Settings',
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
+                        color: isDark ? AppTheme.white : AppTheme.gray900,
                       ),
                     ),
                     const SizedBox(height: 12),
                     Container(
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: isDark ? const Color(0xFF1F2937) : AppTheme.white,
                         borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: isDark ? AppTheme.gray700 : AppTheme.gray200,
+                          width: 1,
+                        ),
                       ),
                       child: Column(
                         children: [
                           _SettingsItem(
-                            icon: Icons.person_outline,
+                            icon: AppIcons.user,
                             title: 'Edit Profile',
+                            isDark: isDark,
                             onTap: () {
                               context.push('/profile/edit');
                             },
                           ),
-                          const Divider(height: 1),
+                          Divider(height: 1, color: isDark ? AppTheme.gray700 : AppTheme.gray200),
                           _SettingsItem(
-                            icon: Icons.calendar_today_outlined,
+                            icon: AppIcons.calendar,
                             title: 'Medical History',
+                            isDark: isDark,
                             onTap: () {
                               context.push('/profile/medical-history');
                             },
@@ -220,40 +243,47 @@ class ProfileScreen extends ConsumerWidget {
                     ),
                     const SizedBox(height: 20),
                     // Notifications
-                    const Text(
+                    Text(
                       'Notifications',
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
+                        color: isDark ? AppTheme.white : AppTheme.gray900,
                       ),
                     ),
                     const SizedBox(height: 12),
                     Container(
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: isDark ? const Color(0xFF1F2937) : AppTheme.white,
                         borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: isDark ? AppTheme.gray700 : AppTheme.gray200,
+                          width: 1,
+                        ),
                       ),
                       child: Column(
                         children: [
                           _SwitchSettingsItem(
-                            icon: Icons.notifications_outlined,
-                            iconColor: Colors.green,
+                            icon: AppIcons.bell,
+                            iconColor: AppTheme.teal600,
                             title: 'Medication Reminders',
                             subtitle: 'Get notified for doses',
                             value: medicationReminders,
+                            isDark: isDark,
                             onChanged: (value) async {
                               final settings = await ref.read(settingsManagerProvider.future);
                               await settings.setMedicationReminders(value);
                               ref.invalidate(settingsManagerProvider);
                             },
                           ),
-                          const Divider(height: 1),
+                          Divider(height: 1, color: isDark ? AppTheme.gray700 : AppTheme.gray200),
                           _SwitchSettingsItem(
-                            icon: Icons.calendar_today_outlined,
-                            iconColor: Colors.blue,
+                            icon: AppIcons.calendar,
+                            iconColor: AppTheme.blue600,
                             title: 'Refill Reminders',
                             subtitle: 'Low supply alerts',
                             value: refillReminders,
+                            isDark: isDark,
                             onChanged: (value) async {
                               final settings = await ref.read(settingsManagerProvider.future);
                               await settings.setRefillReminders(value);
@@ -293,51 +323,59 @@ class ProfileScreen extends ConsumerWidget {
                     const SizedBox(height: 20),
                     */
                     // Preferences
-                    const Text(
+                    Text(
                       'Preferences',
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
+                        color: isDark ? AppTheme.white : AppTheme.gray900,
                       ),
                     ),
                     const SizedBox(height: 12),
                     Container(
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: isDark ? const Color(0xFF1F2937) : AppTheme.white,
                         borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: isDark ? AppTheme.gray700 : AppTheme.gray200,
+                          width: 1,
+                        ),
                       ),
                       child: Column(
                         children: [
                           _SwitchSettingsItem(
-                            icon: Icons.dark_mode_outlined,
-                            iconColor: Colors.grey,
+                            icon: AppIcons.moon,
+                            iconColor: AppTheme.gray500,
                             title: 'Dark Mode',
                             subtitle: 'Easier on the eyes',
                             value: darkMode,
+                            isDark: isDark,
                             onChanged: (value) async {
                               final settings = await ref.read(settingsManagerProvider.future);
                               await settings.setDarkMode(value);
                               ref.invalidate(settingsManagerProvider);
                             },
                           ),
-                          const Divider(height: 1),
+                          Divider(height: 1, color: isDark ? AppTheme.gray700 : AppTheme.gray200),
                           _SwitchSettingsItem(
-                            icon: Icons.text_fields,
-                            iconColor: Colors.green,
+                            icon: AppIcons.edit,
+                            iconColor: AppTheme.teal600,
                             title: 'Large Text Mode',
                             subtitle: 'Better accessibility',
                             value: largeTextMode,
+                            isDark: isDark,
                             onChanged: (value) async {
                               final settings = await ref.read(settingsManagerProvider.future);
                               await settings.setLargeTextMode(value);
                               ref.invalidate(settingsManagerProvider);
                             },
                           ),
-                          const Divider(height: 1),
+                          Divider(height: 1, color: isDark ? AppTheme.gray700 : AppTheme.gray200),
                           _SettingsItem(
-                            icon: Icons.shield_outlined,
-                            iconColor: Colors.blue,
+                            icon: AppIcons.shield,
+                            iconColor: AppTheme.blue600,
                             title: 'Privacy & Data',
+                            isDark: isDark,
                             onTap: () {
                               context.push('/profile/privacy');
                             },
@@ -351,12 +389,16 @@ class ProfileScreen extends ConsumerWidget {
                       width: double.infinity,
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: isDark ? const Color(0xFF1F2937) : AppTheme.white,
                         borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: isDark ? AppTheme.gray700 : AppTheme.gray200,
+                          width: 1,
+                        ),
                       ),
                       child: Row(
                         children: [
-                          Icon(Icons.logout, color: Colors.red[700]),
+                          Icon(AppIcons.logOut, color: AppTheme.red600),
                           const SizedBox(width: 12),
                           Expanded(
                             child: TextButton(
@@ -364,17 +406,35 @@ class ProfileScreen extends ConsumerWidget {
                                 final confirmed = await showDialog<bool>(
                                   context: context,
                                   builder: (context) => AlertDialog(
-                                    title: const Text('Log Out'),
-                                    content: const Text('Are you sure you want to log out?'),
+                                    backgroundColor: isDark ? const Color(0xFF1F2937) : AppTheme.white,
+                                    title: Text(
+                                      'Log Out',
+                                      style: TextStyle(
+                                        color: isDark ? AppTheme.white : AppTheme.gray900,
+                                      ),
+                                    ),
+                                    content: Text(
+                                      'Are you sure you want to log out?',
+                                      style: TextStyle(
+                                        color: isDark
+                                            ? AppTheme.white.withValues(alpha: 0.6)
+                                            : AppTheme.gray600,
+                                      ),
+                                    ),
                                     actions: [
                                       TextButton(
                                         onPressed: () => Navigator.pop(context, false),
-                                        child: const Text('Cancel'),
+                                        child: Text(
+                                          'Cancel',
+                                          style: TextStyle(
+                                            color: isDark ? AppTheme.gray400 : AppTheme.gray700,
+                                          ),
+                                        ),
                                       ),
                                       TextButton(
                                         onPressed: () => Navigator.pop(context, true),
                                         style: TextButton.styleFrom(
-                                          foregroundColor: Colors.red,
+                                          foregroundColor: AppTheme.red600,
                                         ),
                                         child: const Text('Log Out'),
                                       ),
@@ -390,10 +450,10 @@ class ProfileScreen extends ConsumerWidget {
                                   }
                                 }
                               },
-                              child: const Text(
+                              child: Text(
                                 'Log Out',
                                 style: TextStyle(
-                                  color: Colors.red,
+                                  color: AppTheme.red600,
                                   fontSize: 16,
                                   fontWeight: FontWeight.w500,
                                 ),
@@ -420,6 +480,7 @@ class _SettingsItem extends StatelessWidget {
   final Color? iconColor;
   final String title;
   final String? subtitle;
+  final bool isDark;
   final VoidCallback onTap;
 
   const _SettingsItem({
@@ -427,6 +488,7 @@ class _SettingsItem extends StatelessWidget {
     this.iconColor,
     required this.title,
     this.subtitle,
+    required this.isDark,
     required this.onTap,
   });
 
@@ -435,13 +497,14 @@ class _SettingsItem extends StatelessWidget {
     return ListTile(
       leading: Icon(
         icon,
-        color: iconColor ?? Colors.grey[700],
+        color: iconColor ?? (isDark ? AppTheme.gray400 : AppTheme.gray700),
       ),
       title: Text(
         title,
-        style: const TextStyle(
+        style: TextStyle(
           fontSize: 16,
           fontWeight: FontWeight.w500,
+          color: isDark ? AppTheme.white : AppTheme.gray900,
         ),
       ),
       subtitle: subtitle != null
@@ -449,11 +512,16 @@ class _SettingsItem extends StatelessWidget {
               subtitle!,
               style: TextStyle(
                 fontSize: 14,
-                color: Colors.grey[600],
+                color: isDark
+                    ? AppTheme.white.withValues(alpha: 0.6)
+                    : AppTheme.gray600,
               ),
             )
           : null,
-      trailing: const Icon(Icons.chevron_right, color: Colors.grey),
+      trailing: Icon(
+        AppIcons.chevronRight,
+        color: isDark ? AppTheme.gray400 : AppTheme.gray500,
+      ),
       onTap: onTap,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
@@ -468,6 +536,7 @@ class _SwitchSettingsItem extends StatelessWidget {
   final String title;
   final String? subtitle;
   final bool value;
+  final bool isDark;
   final ValueChanged<bool> onChanged;
 
   const _SwitchSettingsItem({
@@ -476,6 +545,7 @@ class _SwitchSettingsItem extends StatelessWidget {
     required this.title,
     this.subtitle,
     required this.value,
+    required this.isDark,
     required this.onChanged,
   });
 
@@ -484,13 +554,14 @@ class _SwitchSettingsItem extends StatelessWidget {
     return ListTile(
       leading: Icon(
         icon,
-        color: iconColor ?? Colors.grey[700],
+        color: iconColor ?? (isDark ? AppTheme.gray400 : AppTheme.gray700),
       ),
       title: Text(
         title,
-        style: const TextStyle(
+        style: TextStyle(
           fontSize: 16,
           fontWeight: FontWeight.w500,
+          color: isDark ? AppTheme.white : AppTheme.gray900,
         ),
       ),
       subtitle: subtitle != null
@@ -498,7 +569,9 @@ class _SwitchSettingsItem extends StatelessWidget {
               subtitle!,
               style: TextStyle(
                 fontSize: 14,
-                color: Colors.grey[600],
+                color: isDark
+                    ? AppTheme.white.withValues(alpha: 0.6)
+                    : AppTheme.gray600,
               ),
             )
           : null,

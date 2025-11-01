@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import '../../../core/models/med_log.dart';
 
 class LogsRepository {
@@ -26,17 +27,30 @@ class LogsRepository {
         .doc(_userId)
         .collection('medLogs')
         .orderBy('timestamp', descending: true)
-        .limit(100);
+        .limit(500); // Increased limit for history views
 
     return query.snapshots().map((snapshot) {
-      var logs = snapshot.docs.map((doc) => MedLog.fromMap(doc.id, doc.data() as Map<String, dynamic>)).toList();
+      if (snapshot.docs.isEmpty) {
+        return <MedLog>[];
+      }
+      
+      var logs = snapshot.docs.map((doc) {
+        try {
+          final data = doc.data() as Map<String, dynamic>?;
+          if (data == null) return null;
+          return MedLog.fromMap(doc.id, data);
+        } catch (e) {
+          debugPrint('Error parsing log document ${doc.id}: $e');
+          return null;
+        }
+      }).whereType<MedLog>().toList();
       
       // Filter by date range in memory if needed
       if (startDate != null) {
-        logs = logs.where((log) => log.timestamp.isAfter(startDate) || log.timestamp.isAtSameMomentAs(startDate)).toList();
+        logs = logs.where((log) => log.timestamp.isAfter(startDate.subtract(const Duration(seconds: 1)))).toList();
       }
       if (endDate != null) {
-        logs = logs.where((log) => log.timestamp.isBefore(endDate) || log.timestamp.isAtSameMomentAs(endDate)).toList();
+        logs = logs.where((log) => log.timestamp.isBefore(endDate.add(const Duration(days: 1)))).toList();
       }
       
       return logs;

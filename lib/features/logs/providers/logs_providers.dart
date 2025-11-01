@@ -8,7 +8,8 @@ final logsRepositoryProvider = Provider<LogsRepository>((ref) {
 
 final logsStreamProvider = StreamProvider.family<List<MedLog>, DateTime?>((ref, endDate) {
   final repository = ref.watch(logsRepositoryProvider);
-  final startDate = endDate?.subtract(const Duration(days: 7));
+  // Fetch logs for the last 90 days to support calendar and history views
+  final startDate = (endDate ?? DateTime.now()).subtract(const Duration(days: 90));
   return repository.watchLogs(startDate: startDate, endDate: endDate);
 });
 

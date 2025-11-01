@@ -24,29 +24,32 @@ class MraApp extends ConsumerWidget {
     
     final themeMode = darkMode ? ThemeMode.dark : ThemeMode.light;
 
+    final baseLightTheme = AppTheme.light();
+    final baseDarkTheme = AppTheme.dark();
+
+    // Apply large text mode using textScaler instead of fontSizeFactor
+    // This avoids the fontSize assertion error
+    final lightTheme = baseLightTheme;
+    final darkTheme = baseDarkTheme;
+
     return MaterialApp.router(
       title: 'Medical Reminder App',
-      theme: AppTheme.light().copyWith(
-        textTheme: AppTheme.light().textTheme.apply(
-          bodyColor: AppTheme.light().textTheme.bodyLarge?.color,
-          fontSizeFactor: largeTextMode ? 1.3 : 1.0,
-        ),
-      ),
-      darkTheme: AppTheme.dark().copyWith(
-        textTheme: AppTheme.dark().textTheme.apply(
-          bodyColor: AppTheme.dark().textTheme.bodyLarge?.color,
-          fontSizeFactor: largeTextMode ? 1.3 : 1.0,
-        ),
-      ),
+      theme: lightTheme,
+      darkTheme: darkTheme,
       themeMode: themeMode,
       routerConfig: router,
       locale: locale,
       builder: (context, child) {
-        return MediaQuery(
-          data: MediaQuery.of(context).copyWith(
-            textScaler: TextScaler.linear(largeTextMode ? 1.3 : 1.0),
+        return AnimatedTheme(
+          data: Theme.of(context),
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeInOut,
+          child: MediaQuery(
+            data: MediaQuery.of(context).copyWith(
+              textScaler: TextScaler.linear(largeTextMode ? 1.3 : 1.0),
+            ),
+            child: child!,
           ),
-          child: child!,
         );
       },
       localizationsDelegates: const [

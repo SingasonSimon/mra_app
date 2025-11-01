@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import '../app/theme/app_theme.dart';
 
 class BottomNavigation extends StatelessWidget {
   final int currentIndex;
@@ -30,10 +31,13 @@ class BottomNavigation extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppTheme.white,
+        border: Border(
+          top: BorderSide(color: AppTheme.gray200, width: 1),
+        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.1),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, -2),
           ),
@@ -47,25 +51,25 @@ class BottomNavigation extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
               _NavItem(
-                icon: Icons.home,
+                icon: AppIcons.home,
                 label: 'Home',
                 isSelected: currentIndex == 0,
                 onTap: () => _onTap(context, 0),
               ),
               _NavItem(
-                icon: Icons.medication,
+                icon: AppIcons.pill,
                 label: 'Meds',
                 isSelected: currentIndex == 1,
                 onTap: () => _onTap(context, 1),
               ),
               _NavItem(
-                icon: Icons.bar_chart,
+                icon: AppIcons.barChart3,
                 label: 'History',
                 isSelected: currentIndex == 2,
                 onTap: () => _onTap(context, 2),
               ),
               _NavItem(
-                icon: Icons.person,
+                icon: AppIcons.user,
                 label: 'Profile',
                 isSelected: currentIndex == 3,
                 onTap: () => _onTap(context, 3),
@@ -93,8 +97,6 @@ class _NavItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final primaryColor = const Color(0xFF2E7D32); // Teal-green from wireframe
-    
     return Expanded(
       child: InkWell(
         onTap: onTap,
@@ -104,7 +106,7 @@ class _NavItem extends StatelessWidget {
           children: [
             Icon(
               icon,
-              color: isSelected ? primaryColor : Colors.grey,
+              color: isSelected ? AppTheme.teal600 : AppTheme.gray400,
               size: 24,
             ),
             const SizedBox(height: 4),
@@ -112,7 +114,7 @@ class _NavItem extends StatelessWidget {
               label,
               style: TextStyle(
                 fontSize: 12,
-                color: isSelected ? primaryColor : Colors.grey,
+                color: isSelected ? AppTheme.teal600 : AppTheme.gray500,
                 fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
               ),
             ),

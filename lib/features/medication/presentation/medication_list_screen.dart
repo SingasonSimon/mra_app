@@ -81,18 +81,26 @@ class _MedicationListScreenState extends ConsumerState<MedicationListScreen> {
     );
 
     final activeCount = activeMedications.length;
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: theme.colorScheme.background,
       body: Column(
         children: [
-          // Teal/Green Header Section
+          // Teal Header Section with Gradient
           Container(
             width: double.infinity,
             padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
-            decoration: const BoxDecoration(
-              color: AppTheme.primary,
-              borderRadius: BorderRadius.only(
+            decoration: BoxDecoration(
+              gradient: isDark
+                  ? const LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [Color(0xFF1F2937), Color(0xFF111827)],
+                    )
+                  : AppTheme.tealGradient,
+              borderRadius: const BorderRadius.only(
                 bottomLeft: Radius.circular(24),
                 bottomRight: Radius.circular(24),
               ),
@@ -106,7 +114,7 @@ class _MedicationListScreenState extends ConsumerState<MedicationListScreen> {
                   Row(
                     children: [
                       IconButton(
-                        icon: const Icon(Icons.arrow_back, color: Colors.white),
+                        icon: const Icon(AppIcons.arrowLeft, color: AppTheme.white),
                         onPressed: () => context.pop(),
                         padding: EdgeInsets.zero,
                         constraints: const BoxConstraints(),
@@ -123,7 +131,7 @@ class _MedicationListScreenState extends ConsumerState<MedicationListScreen> {
                         ),
                       ),
                       IconButton(
-                        icon: const Icon(Icons.add, color: Colors.white),
+                        icon: const Icon(AppIcons.plus, color: AppTheme.white),
                         onPressed: () => context.push('/medications/add'),
                         padding: EdgeInsets.zero,
                         constraints: const BoxConstraints(),
@@ -147,13 +155,22 @@ class _MedicationListScreenState extends ConsumerState<MedicationListScreen> {
                         _searchQuery = value;
                       });
                     },
-                    style: const TextStyle(color: Colors.black87),
+                    style: TextStyle(
+                      color: isDark ? AppTheme.white : AppTheme.gray900,
+                    ),
                     decoration: InputDecoration(
                       hintText: 'Search medications...',
-                      hintStyle: TextStyle(color: Colors.grey[400]),
-                      prefixIcon: const Icon(Icons.search, color: Colors.grey),
+                      hintStyle: TextStyle(
+                        color: isDark ? AppTheme.gray400 : AppTheme.gray500,
+                      ),
+                      prefixIcon: Icon(
+                        AppIcons.search,
+                        color: isDark ? AppTheme.gray400 : AppTheme.gray500,
+                      ),
                       filled: true,
-                      fillColor: Colors.white,
+                      fillColor: isDark
+                          ? AppTheme.white.withValues(alpha: 0.1)
+                          : AppTheme.white,
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
                         borderSide: BorderSide.none,
@@ -177,9 +194,9 @@ class _MedicationListScreenState extends ConsumerState<MedicationListScreen> {
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Icon(
-                            Icons.medication_outlined,
+                            AppIcons.pill,
                             size: 64,
-                            color: Colors.grey[400],
+                            color: isDark ? AppTheme.gray400 : AppTheme.gray400,
                           ),
                           const SizedBox(height: 16),
                           Text(
@@ -189,7 +206,7 @@ class _MedicationListScreenState extends ConsumerState<MedicationListScreen> {
                             style: TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.w600,
-                              color: Colors.grey[700],
+                              color: isDark ? AppTheme.white : AppTheme.gray900,
                             ),
                           ),
                           const SizedBox(height: 8),
@@ -197,7 +214,9 @@ class _MedicationListScreenState extends ConsumerState<MedicationListScreen> {
                             Text(
                               'Tap the + button to add your first medication',
                               style: TextStyle(
-                                color: Colors.grey[600],
+                                color: isDark
+                                    ? AppTheme.white.withValues(alpha: 0.6)
+                                    : AppTheme.gray600,
                                 fontSize: 14,
                               ),
                               textAlign: TextAlign.center,
@@ -211,11 +230,12 @@ class _MedicationListScreenState extends ConsumerState<MedicationListScreen> {
                 return ListView(
                   padding: const EdgeInsets.all(20),
                   children: [
-                    const Text(
+                    Text(
                       'Active',
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
+                        color: isDark ? AppTheme.white : AppTheme.gray900,
                       ),
                     ),
                     const SizedBox(height: 16),
@@ -278,12 +298,18 @@ class _MedicationListScreenState extends ConsumerState<MedicationListScreen> {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Icon(Icons.error_outline, size: 48, color: Colors.red),
+                      Icon(
+                        AppIcons.alertCircle,
+                        size: 48,
+                        color: AppTheme.red500,
+                      ),
                       const SizedBox(height: 16),
                       Text(
                         'Error loading medications',
                         style: TextStyle(
-                          color: Colors.grey[700],
+                          color: isDark
+                              ? AppTheme.white.withValues(alpha: 0.6)
+                              : AppTheme.gray700,
                           fontSize: 16,
                         ),
                       ),
@@ -320,21 +346,28 @@ class _MedicationCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final supplyDays = getSupplyDays(medication);
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDark ? const Color(0xFF1F2937) : AppTheme.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey[200]!),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        border: Border.all(
+          color: isDark ? AppTheme.gray700 : AppTheme.gray200,
+          width: 1,
+        ),
+        boxShadow: isDark
+            ? []
+            : [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.05),
+                  blurRadius: 10,
+                  offset: const Offset(0, 2),
+                ),
+              ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -346,9 +379,10 @@ class _MedicationCard extends StatelessWidget {
               Expanded(
                 child: Text(
                   medication.name,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
+                    color: isDark ? AppTheme.white : AppTheme.gray900,
                   ),
                 ),
               ),
@@ -375,20 +409,28 @@ class _MedicationCard extends StatelessWidget {
                 '${medication.dosage} - ${getFrequency(medication.timesPerDay.length)}',
                 style: TextStyle(
                   fontSize: 13,
-                  color: Colors.grey[700],
+                  color: isDark
+                      ? AppTheme.white.withValues(alpha: 0.6)
+                      : AppTheme.gray700,
                 ),
               ),
               const SizedBox(height: 8),
               // Schedule with clock icon
               Row(
                 children: [
-                  Icon(Icons.access_time, size: 16, color: Colors.grey[600]),
+                  Icon(
+                    AppIcons.clock,
+                    size: 16,
+                    color: isDark ? AppTheme.gray400 : AppTheme.gray600,
+                  ),
                   const SizedBox(width: 6),
                   Text(
                     formatTimes(medication.timesPerDay),
                     style: TextStyle(
                       fontSize: 13,
-                      color: Colors.grey[700],
+                      color: isDark
+                          ? AppTheme.white.withValues(alpha: 0.6)
+                          : AppTheme.gray700,
                     ),
                   ),
                 ],
@@ -399,7 +441,9 @@ class _MedicationCard extends StatelessWidget {
                   supplyDays,
                   style: TextStyle(
                     fontSize: 13,
-                    color: Colors.grey[700],
+                    color: isDark
+                        ? AppTheme.white.withValues(alpha: 0.6)
+                        : AppTheme.gray700,
                   ),
                 ),
               ],
@@ -410,18 +454,18 @@ class _MedicationCard extends StatelessWidget {
             children: [
               TextButton.icon(
                 onPressed: onEdit,
-                icon: const Icon(Icons.edit, size: 18),
+                icon: const Icon(AppIcons.edit, size: 18),
                 label: const Text('Edit'),
                 style: TextButton.styleFrom(
-                  foregroundColor: Colors.blue,
+                  foregroundColor: AppTheme.blue600,
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 ),
               ),
               const SizedBox(width: 8),
               IconButton(
                 onPressed: onDelete,
-                icon: const Icon(Icons.delete_outline),
-                color: Colors.red,
+                icon: const Icon(AppIcons.trash2),
+                color: AppTheme.red500,
                 iconSize: 20,
               ),
             ],

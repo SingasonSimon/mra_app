@@ -325,23 +325,32 @@ class _AddMedicationScreenState extends ConsumerState<AddMedicationScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: theme.colorScheme.background,
       body: SafeArea(
         bottom: false,
         child: Column(
           children: [
-            // Teal/Green Header
+            // Teal Header with Gradient
             Container(
               width: double.infinity,
               padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
-              decoration: const BoxDecoration(
-                color: AppTheme.primary,
+              decoration: BoxDecoration(
+                gradient: isDark
+                    ? const LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [Color(0xFF1F2937), Color(0xFF111827)],
+                      )
+                    : AppTheme.tealGradient,
               ),
               child: Row(
                 children: [
                   IconButton(
-                    icon: const Icon(Icons.arrow_back, color: Colors.white),
+                    icon: const Icon(AppIcons.arrowLeft, color: AppTheme.white),
                     onPressed: () => context.pop(),
                     padding: EdgeInsets.zero,
                     constraints: const BoxConstraints(),
@@ -350,7 +359,7 @@ class _AddMedicationScreenState extends ConsumerState<AddMedicationScreen> {
                     child: Text(
                       'Add Medication',
                       style: TextStyle(
-                        color: Colors.white,
+                        color: AppTheme.white,
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
                       ),
@@ -371,15 +380,29 @@ class _AddMedicationScreenState extends ConsumerState<AddMedicationScreen> {
                     // Medication Name
                     TextFormField(
                       controller: _nameController,
-                      style: const TextStyle(color: Colors.black87, fontSize: 15),
+                      style: TextStyle(
+                        color: isDark ? AppTheme.white : AppTheme.gray900,
+                        fontSize: 15,
+                      ),
                       decoration: InputDecoration(
                         labelText: 'Medication Name*',
                         hintText: 'e.g., Metformin',
-                        hintStyle: TextStyle(color: Colors.grey[400], fontSize: 14),
-                        labelStyle: TextStyle(color: Colors.grey[600], fontSize: 14),
-                        prefixIcon: const Icon(Icons.medication, color: Colors.grey),
+                        hintStyle: TextStyle(
+                          color: isDark ? AppTheme.gray400 : AppTheme.gray500,
+                          fontSize: 14,
+                        ),
+                        labelStyle: TextStyle(
+                          color: isDark ? AppTheme.gray400 : AppTheme.gray600,
+                          fontSize: 14,
+                        ),
+                        prefixIcon: Icon(
+                          AppIcons.pill,
+                          color: isDark ? AppTheme.gray400 : AppTheme.gray500,
+                        ),
                         filled: true,
-                        fillColor: Colors.grey[100],
+                        fillColor: isDark
+                            ? AppTheme.white.withValues(alpha: 0.1)
+                            : AppTheme.gray100,
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
                           borderSide: BorderSide.none,
@@ -401,14 +424,25 @@ class _AddMedicationScreenState extends ConsumerState<AddMedicationScreen> {
                           flex: 2,
                           child: TextFormField(
                             controller: _dosageController,
-                            style: const TextStyle(color: Colors.black87, fontSize: 15),
+                            style: TextStyle(
+                              color: isDark ? AppTheme.white : AppTheme.gray900,
+                              fontSize: 15,
+                            ),
                             decoration: InputDecoration(
                               labelText: 'Dosage*',
                               hintText: 'e.g., 500',
-                              hintStyle: TextStyle(color: Colors.grey[400], fontSize: 14),
-                              labelStyle: TextStyle(color: Colors.grey[600], fontSize: 14),
+                              hintStyle: TextStyle(
+                                color: isDark ? AppTheme.gray400 : AppTheme.gray500,
+                                fontSize: 14,
+                              ),
+                              labelStyle: TextStyle(
+                                color: isDark ? AppTheme.gray400 : AppTheme.gray600,
+                                fontSize: 14,
+                              ),
                               filled: true,
-                              fillColor: Colors.grey[100],
+                              fillColor: isDark
+                                  ? AppTheme.white.withValues(alpha: 0.1)
+                                  : AppTheme.gray100,
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(12),
                                 borderSide: BorderSide.none,
@@ -431,19 +465,35 @@ class _AddMedicationScreenState extends ConsumerState<AddMedicationScreen> {
                             value: _selectedUnit,
                             decoration: InputDecoration(
                               labelText: 'Unit',
-                              labelStyle: TextStyle(color: Colors.grey[600], fontSize: 14),
+                              labelStyle: TextStyle(
+                                color: isDark ? AppTheme.gray400 : AppTheme.gray600,
+                                fontSize: 14,
+                              ),
                               filled: true,
-                              fillColor: Colors.grey[100],
+                              fillColor: isDark
+                                  ? AppTheme.white.withValues(alpha: 0.1)
+                                  : AppTheme.gray100,
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(12),
                                 borderSide: BorderSide.none,
                               ),
                               contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
                             ),
+                            dropdownColor: isDark ? const Color(0xFF1F2937) : AppTheme.white,
+                            style: TextStyle(
+                              color: isDark ? AppTheme.white : AppTheme.gray900,
+                              fontSize: 15,
+                            ),
                             items: _units.map((unit) {
                               return DropdownMenuItem(
                                 value: unit,
-                                child: Text(unit, style: const TextStyle(fontSize: 15)),
+                                child: Text(
+                                  unit,
+                                  style: TextStyle(
+                                    fontSize: 15,
+                                    color: isDark ? AppTheme.white : AppTheme.gray900,
+                                  ),
+                                ),
                               );
                             }).toList(),
                             onChanged: (value) {
@@ -460,21 +510,43 @@ class _AddMedicationScreenState extends ConsumerState<AddMedicationScreen> {
                       decoration: InputDecoration(
                         labelText: 'Frequency*',
                         hintText: 'Select frequency',
-                        hintStyle: TextStyle(color: Colors.grey[400], fontSize: 14),
-                        labelStyle: TextStyle(color: Colors.grey[600], fontSize: 14),
-                        prefixIcon: const Icon(Icons.repeat, color: Colors.grey),
+                        hintStyle: TextStyle(
+                          color: isDark ? AppTheme.gray400 : AppTheme.gray500,
+                          fontSize: 14,
+                        ),
+                        labelStyle: TextStyle(
+                          color: isDark ? AppTheme.gray400 : AppTheme.gray600,
+                          fontSize: 14,
+                        ),
+                        prefixIcon: Icon(
+                          Icons.repeat_rounded,
+                          color: isDark ? AppTheme.gray400 : AppTheme.gray500,
+                        ),
                         filled: true,
-                        fillColor: Colors.grey[100],
+                        fillColor: isDark
+                            ? AppTheme.white.withValues(alpha: 0.1)
+                            : AppTheme.gray100,
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
                           borderSide: BorderSide.none,
                         ),
                         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
                       ),
+                      dropdownColor: isDark ? const Color(0xFF1F2937) : AppTheme.white,
+                      style: TextStyle(
+                        color: isDark ? AppTheme.white : AppTheme.gray900,
+                        fontSize: 15,
+                      ),
                       items: _frequencies.map((freq) {
                         return DropdownMenuItem(
                           value: freq,
-                          child: Text(freq, style: const TextStyle(fontSize: 15)),
+                          child: Text(
+                            freq,
+                            style: TextStyle(
+                              fontSize: 15,
+                              color: isDark ? AppTheme.white : AppTheme.gray900,
+                            ),
+                          ),
                         );
                       }).toList(),
                       onChanged: (value) {
@@ -494,12 +566,17 @@ class _AddMedicationScreenState extends ConsumerState<AddMedicationScreen> {
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
                         decoration: BoxDecoration(
-                          color: Colors.grey[100],
+                          color: isDark
+                              ? AppTheme.white.withValues(alpha: 0.1)
+                              : AppTheme.gray100,
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Row(
                           children: [
-                            const Icon(Icons.access_time, color: Colors.grey),
+                            Icon(
+                              AppIcons.clock,
+                              color: isDark ? AppTheme.gray400 : AppTheme.gray500,
+                            ),
                             const SizedBox(width: 12),
                             Expanded(
                               child: Column(
@@ -508,7 +585,7 @@ class _AddMedicationScreenState extends ConsumerState<AddMedicationScreen> {
                                   Text(
                                     'Time*',
                                     style: TextStyle(
-                                      color: Colors.grey[600],
+                                      color: isDark ? AppTheme.gray400 : AppTheme.gray600,
                                       fontSize: 12,
                                     ),
                                   ),
@@ -518,7 +595,9 @@ class _AddMedicationScreenState extends ConsumerState<AddMedicationScreen> {
                                         ? 'Tap to add time'
                                         : _selectedTimes.map((t) => _getDisplayTime(t)).join(', '),
                                     style: TextStyle(
-                                      color: _selectedTimes.isEmpty ? Colors.grey[400] : Colors.black87,
+                                      color: _selectedTimes.isEmpty
+                                          ? (isDark ? AppTheme.gray400 : AppTheme.gray500)
+                                          : (isDark ? AppTheme.white : AppTheme.gray900),
                                       fontSize: 15,
                                     ),
                                   ),
@@ -527,7 +606,11 @@ class _AddMedicationScreenState extends ConsumerState<AddMedicationScreen> {
                             ),
                             if (_selectedTimes.isNotEmpty)
                               IconButton(
-                                icon: const Icon(Icons.close, size: 20),
+                                icon: Icon(
+                                  AppIcons.x,
+                                  size: 20,
+                                  color: isDark ? AppTheme.gray400 : AppTheme.gray500,
+                                ),
                                 onPressed: () {
                                   setState(() => _selectedTimes.clear());
                                 },
@@ -542,15 +625,29 @@ class _AddMedicationScreenState extends ConsumerState<AddMedicationScreen> {
                     // Duration (days)
                     TextFormField(
                       controller: _durationController,
-                      style: const TextStyle(color: Colors.black87, fontSize: 15),
+                      style: TextStyle(
+                        color: isDark ? AppTheme.white : AppTheme.gray900,
+                        fontSize: 15,
+                      ),
                       decoration: InputDecoration(
                         labelText: 'Duration (days)',
                         hintText: 'e.g., 30',
-                        hintStyle: TextStyle(color: Colors.grey[400], fontSize: 14),
-                        labelStyle: TextStyle(color: Colors.grey[600], fontSize: 14),
-                        prefixIcon: const Icon(Icons.calendar_today, color: Colors.grey),
+                        hintStyle: TextStyle(
+                          color: isDark ? AppTheme.gray400 : AppTheme.gray500,
+                          fontSize: 14,
+                        ),
+                        labelStyle: TextStyle(
+                          color: isDark ? AppTheme.gray400 : AppTheme.gray600,
+                          fontSize: 14,
+                        ),
+                        prefixIcon: Icon(
+                          AppIcons.calendar,
+                          color: isDark ? AppTheme.gray400 : AppTheme.gray500,
+                        ),
                         filled: true,
-                        fillColor: Colors.grey[100],
+                        fillColor: isDark
+                            ? AppTheme.white.withValues(alpha: 0.1)
+                            : AppTheme.gray100,
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
                           borderSide: BorderSide.none,
@@ -571,15 +668,29 @@ class _AddMedicationScreenState extends ConsumerState<AddMedicationScreen> {
                     // Notes
                     TextFormField(
                       controller: _notesController,
-                      style: const TextStyle(color: Colors.black87, fontSize: 15),
+                      style: TextStyle(
+                        color: isDark ? AppTheme.white : AppTheme.gray900,
+                        fontSize: 15,
+                      ),
                       decoration: InputDecoration(
                         labelText: 'Notes (Optional)',
                         hintText: 'Take with food, avoid dairy...',
-                        hintStyle: TextStyle(color: Colors.grey[400], fontSize: 14),
-                        labelStyle: TextStyle(color: Colors.grey[600], fontSize: 14),
-                        prefixIcon: const Icon(Icons.note, color: Colors.grey),
+                        hintStyle: TextStyle(
+                          color: isDark ? AppTheme.gray400 : AppTheme.gray500,
+                          fontSize: 14,
+                        ),
+                        labelStyle: TextStyle(
+                          color: isDark ? AppTheme.gray400 : AppTheme.gray600,
+                          fontSize: 14,
+                        ),
+                        prefixIcon: Icon(
+                          AppIcons.edit,
+                          color: isDark ? AppTheme.gray400 : AppTheme.gray500,
+                        ),
                         filled: true,
-                        fillColor: Colors.grey[100],
+                        fillColor: isDark
+                            ? AppTheme.white.withValues(alpha: 0.1)
+                            : AppTheme.gray100,
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
                           borderSide: BorderSide.none,
@@ -590,11 +701,12 @@ class _AddMedicationScreenState extends ConsumerState<AddMedicationScreen> {
                     ),
                     const SizedBox(height: 24),
                     // Upload Prescription Photo
-                    const Text(
+                    Text(
                       'Upload Prescription Photo',
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
+                        color: isDark ? AppTheme.white : AppTheme.gray900,
                       ),
                     ),
                     const SizedBox(height: 12),
@@ -603,9 +715,11 @@ class _AddMedicationScreenState extends ConsumerState<AddMedicationScreen> {
                       child: Container(
                         height: 120,
                         decoration: BoxDecoration(
-                          color: Colors.grey[50],
+                          color: isDark
+                              ? AppTheme.white.withValues(alpha: 0.1)
+                              : AppTheme.gray50,
                           border: Border.all(
-                            color: Colors.grey[300]!,
+                            color: isDark ? AppTheme.gray700 : AppTheme.gray200,
                             style: BorderStyle.solid,
                             width: 2,
                           ),
@@ -626,7 +740,7 @@ class _AddMedicationScreenState extends ConsumerState<AddMedicationScreen> {
                                     top: 8,
                                     right: 8,
                                     child: IconButton(
-                                      icon: const Icon(Icons.close, color: Colors.white),
+                                      icon: const Icon(AppIcons.x, color: AppTheme.white),
                                       onPressed: () {
                                         setState(() => _prescriptionImage = null);
                                       },
@@ -640,12 +754,18 @@ class _AddMedicationScreenState extends ConsumerState<AddMedicationScreen> {
                             : Column(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
-                                  const Icon(Icons.camera_alt, size: 32, color: Colors.grey),
+                                  Icon(
+                                    AppIcons.plus,
+                                    size: 32,
+                                    color: isDark ? AppTheme.gray400 : AppTheme.gray500,
+                                  ),
                                   const SizedBox(height: 8),
                                   Text(
                                     'Take or Upload Photo',
                                     style: TextStyle(
-                                      color: Colors.grey[600],
+                                      color: isDark
+                                          ? AppTheme.white.withValues(alpha: 0.6)
+                                          : AppTheme.gray600,
                                       fontSize: 14,
                                     ),
                                   ),
@@ -661,18 +781,21 @@ class _AddMedicationScreenState extends ConsumerState<AddMedicationScreen> {
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text(
+                            Text(
                               'Enable Notifications',
                               style: TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w600,
+                                color: isDark ? AppTheme.white : AppTheme.gray900,
                               ),
                             ),
                             const SizedBox(height: 4),
                             Text(
                               'Receive reminders for this medication',
                               style: TextStyle(
-                                color: Colors.grey[600],
+                                color: isDark
+                                    ? AppTheme.white.withValues(alpha: 0.6)
+                                    : AppTheme.gray600,
                                 fontSize: 13,
                               ),
                             ),
@@ -713,8 +836,8 @@ class _AddMedicationScreenState extends ConsumerState<AddMedicationScreen> {
                       child: ElevatedButton(
                         onPressed: _saveMedication,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: AppTheme.primary,
-                          foregroundColor: Colors.white,
+                          backgroundColor: AppTheme.teal500,
+                          foregroundColor: AppTheme.white,
                           padding: const EdgeInsets.symmetric(vertical: 16),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
@@ -756,6 +879,9 @@ class _NotificationToggleItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -765,16 +891,19 @@ class _NotificationToggleItem extends StatelessWidget {
             children: [
               Text(
                 title,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.w500,
+                  color: isDark ? AppTheme.white : AppTheme.gray900,
                 ),
               ),
               const SizedBox(height: 4),
               Text(
                 subtitle,
                 style: TextStyle(
-                  color: Colors.grey[600],
+                  color: isDark
+                      ? AppTheme.white.withValues(alpha: 0.6)
+                      : AppTheme.gray600,
                   fontSize: 13,
                 ),
               ),

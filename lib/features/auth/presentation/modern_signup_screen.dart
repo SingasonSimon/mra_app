@@ -381,7 +381,7 @@ class _ModernSignUpScreenState extends ConsumerState<ModernSignUpScreen> {
                           child: Text(
                             'Sign In',
                             style: TextStyle(
-                              color: AppTheme.accentGreen,
+                              color: AppTheme.teal600,
                               fontWeight: FontWeight.bold,
                               fontSize: 14,
                             ),
